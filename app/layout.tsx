@@ -1,41 +1,39 @@
-import * as React from 'react';
-import { NextAppProvider } from '@toolpad/core/nextjs';
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import * as React from "react";
+import { NextAppProvider } from "@toolpad/core/nextjs";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
-import type { Navigation } from '@toolpad/core/AppProvider';
-import { SessionProvider, signIn, signOut } from 'next-auth/react';
-import { auth } from '../auth';
-import theme from '../theme';
+import type { Navigation } from "@toolpad/core/AppProvider";
+import { SessionProvider, signIn, signOut } from "next-auth/react";
+import { auth } from "../auth";
+import theme from "../theme";
 
 const NAVIGATION: Navigation = [
   {
-    kind: 'header',
-    title: 'Main items',
+    kind: "header",
+    title: "Main items",
   },
   {
-    segment: '',
-    title: 'Dashboard',
+    segment: "",
+    title: "Dashboard",
     icon: <DashboardIcon />,
   },
   {
-    segment: 'orders',
-    title: 'Orders',
+    segment: "orders",
+    title: "Orders",
     icon: <ShoppingCartIcon />,
   },
 ];
 
 const BRANDING = {
-  title: 'My Toolpad Core Next.js App',
+  title: "My Toolpad Core Next.js App",
 };
-
 
 const AUTHENTICATION = {
   signIn,
   signOut,
 };
-
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
   const session = await auth();
@@ -45,7 +43,6 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
       <body>
         <SessionProvider session={session}>
           <AppRouterCacheProvider options={{ enableCssLayer: true }}>
-          
             <NextAppProvider
               navigation={NAVIGATION}
               branding={BRANDING}
@@ -55,7 +52,6 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
             >
               {props.children}
             </NextAppProvider>
-            
           </AppRouterCacheProvider>
         </SessionProvider>
       </body>
