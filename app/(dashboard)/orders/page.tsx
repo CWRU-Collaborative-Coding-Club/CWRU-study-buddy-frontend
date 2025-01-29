@@ -1,6 +1,7 @@
+"use client";
 import * as React from "react";
-import Typography from "@mui/material/Typography";
+import CustomDataGrid from "../../components/CustomDataGrid";
 
-export default async function OrdersPage() {
-  return <Typography>Welcome to the Toolpad orders!</Typography>;
+export default function OrdersPage() {
+  return <CustomDataGrid />;
 }

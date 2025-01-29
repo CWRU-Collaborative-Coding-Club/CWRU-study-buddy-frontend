@@ -1,13 +1,6 @@
 import * as React from "react";
-import Typography from "@mui/material/Typography";
-import { auth } from "../../auth";
+import DashboardContent from "./DashboardContent";
 
-export default async function HomePage() {
-  const session = await auth();
-
-  return (
-    <Typography>
-      Welcome to Toolpad, {session?.user?.name || "User"}!
-    </Typography>
-  );
+export default function Dashboard() {
+  return <DashboardContent />;
 }
