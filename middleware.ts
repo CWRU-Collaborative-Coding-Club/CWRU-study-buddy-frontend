@@ -1,6 +1,18 @@
-export { auth as middleware } from "./auth";
+import { NextRequest, NextResponse } from "next/server";
+
+import { SIGNIN_PATH, SIGNUP_PATH } from "./constants";
+
+export async function middleware(req: NextRequest) {
+  if (
+    // req.nextUrl.pathname !== SIGNIN_PATH &&
+    // req.nextUrl.pathname !== SIGNUP_PATH
+    false
+  ) {
+    return NextResponse.redirect(new URL(SIGNIN_PATH, req.url));
+  }
+  return NextResponse.next();
+}
 
 export const config = {
-  // https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
   matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
 };

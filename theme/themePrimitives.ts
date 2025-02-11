@@ -241,7 +241,7 @@ export const getDesignTokens = (mode: PaletteMode) => {
       },
     },
     shape: {
-      borderRadius: 8,
+      borderRadius: 10,
     },
     shadows: customShadows,
   };

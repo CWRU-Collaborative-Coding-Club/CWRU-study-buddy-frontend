@@ -4,9 +4,9 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import type { Navigation } from "@toolpad/core/AppProvider";
-import { SessionProvider, signIn, signOut } from "next-auth/react";
 import theme from "../theme";
-import { auth } from "../auth";
+import { Suspense } from "react";
+import { signOutUser } from "./auth/signout";
 
 const NAVIGATION: Navigation = [
   {
@@ -22,32 +22,63 @@ const NAVIGATION: Navigation = [
     title: "Orders",
     icon: <ShoppingCartIcon />,
   },
+  {
+    kind: "divider",
+  },
+  {
+    kind: "header",
+    title: "Analytics",
+  },
+  {
+    segment: "chat",
+    title: "Chat",
+    icon: <ShoppingCartIcon />,
+    children: [
+      {
+        segment: "",
+        title: "Chat",
+      },
+    ],
+  },
 ];
 
 const AUTHENTICATION = {
-  signIn,
-  signOut,
+  signIn: async () => {
+    "use server";
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/signin";
+    }
+  },
+  signOut: signOutUser,
+};
+
+const SESSION = {
+  user: {
+    email: "email",
+    id: "email",
+    image: "https://i.imgur.com/u6oVEqw.jpeg",
+    name: "User",
+  },
 };
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const session = await auth();
   return (
     <html lang="en" data-toolpad-color-scheme="light">
       <body>
-        <SessionProvider session={session}>
+        <Suspense fallback={<div>Loading...</div>}>
           <AppRouterCacheProvider options={{ enableCssLayer: true }}>
             <NextAppProvider
               theme={theme}
               navigation={NAVIGATION}
-              session={session}
               authentication={AUTHENTICATION}
+              session={SESSION}
             >
               {children}
             </NextAppProvider>
           </AppRouterCacheProvider>
-        </SessionProvider>
+        </Suspense>
       </body>
     </html>
   );
