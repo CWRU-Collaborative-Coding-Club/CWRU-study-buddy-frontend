@@ -78,7 +78,7 @@ export default function ChatPage() {
         <List>
           {["Refund Request - Angry Customer", "Billing Issue - Confused Customer", "Tech Support - Happy Customer"].map((scenario) => (
             <ListItem
-              button
+              component="button"
               key={scenario}
               onClick={() => setSelectedScenario(scenario)}
               sx={{
