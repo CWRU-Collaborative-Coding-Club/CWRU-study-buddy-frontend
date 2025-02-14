@@ -67,7 +67,7 @@ export default function ChatPage() {
 
     // Fetch AI response from your backend
     try {
-      const response = await fetch("http://eaton1-api.xlab-cwru.com/dev/stream_chat", {
+      const response = await fetch("https://eaton1-api.xlab-cwru.com/dev/stream_chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
