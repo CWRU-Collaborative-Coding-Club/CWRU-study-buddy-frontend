@@ -23,6 +23,11 @@ const NAVIGATION: Navigation = [
     icon: <ShoppingCartIcon />,
   },
   {
+    segment: "users",
+    title: "Users",
+    icon: <DashboardIcon />,
+  },
+  {
     kind: "divider",
   },
   {

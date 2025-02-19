@@ -8,8 +8,10 @@ import {
 } from "firebase/auth";
 import { setPersistence, browserSessionPersistence } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Box, Button, Grid, Paper, TextField, Typography } from "@mui/material";
+
 export default function SignUp() {
   const [form, setForm] = useState({
     firstName: "",
@@ -18,24 +20,27 @@ export default function SignUp() {
     password: "",
     confirmPassword: "",
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter(); // Initialize the router
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+      setError("Passwords do not match");
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
-      // Create user with Firebase
+      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -43,7 +48,7 @@ export default function SignUp() {
       );
       const user = userCredential.user;
 
-      // Save additional user data to Firestore
+      // Save additional user info to Firestore
       await setDoc(doc(db, "users", user.uid), {
         firstName: form.firstName,
         lastName: form.lastName,
@@ -51,15 +56,13 @@ export default function SignUp() {
         createdAt: new Date(),
       });
 
-      // sign in the user
+      // Sign in the user
       await signInWithEmailAndPassword(auth, form.email, form.password);
 
       // Show success message
       alert("User registered successfully!");
       console.log("Redirecting to dashboard...");
       router.push("/"); // Redirect to the dashboard page
-
-      // No need to redirect to the login page after successful sign-up
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -68,62 +71,80 @@ export default function SignUp() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h2 className="text-xl font-bold">Sign Up</h2>
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-4 bg-white p-6 rounded-lg shadow-md"
-      >
-        <input
-          type="text"
-          name="firstName"
-          placeholder="First Name"
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="text"
-          name="lastName"
-          placeholder="Last Name"
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="confirmPassword"
-          placeholder="Confirm Password"
-          onChange={handleChange}
-          required
-        />
-        {error && <p className="text-red-500">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          {loading ? "Signing Up..." : "Sign Up"}
-        </button>
-      </form>
-      <p className="mt-4">
-        Already have an account?{" "}
-        <Link href="/auth/signin" className="text-blue-500 hover:underline">
-          Sign In
-        </Link>
-      </p>
-    </div>
+    <Grid container justifyContent="center" alignItems="center" sx={{ height: "100vh", bgcolor: "#f4f4f4" }}>
+      <Grid item xs={11} sm={8} md={6} lg={4}>
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography variant="h4" align="center" gutterBottom>
+            Sign Up
+          </Typography>
+          <form onSubmit={handleSignup}>
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="First Name"
+                variant="outlined"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+              />
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Last Name"
+                variant="outlined"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+              />
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Email"
+                variant="outlined"
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+              />
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Password"
+                variant="outlined"
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+              />
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Confirm Password"
+                variant="outlined"
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleChange}
+              />
+            </Box>
+            {error && (
+              <Typography color="error" sx={{ mb: 2 }}>
+                {error}
+              </Typography>
+            )}
+            <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading}>
+              {loading ? "Signing Up..." : "Sign Up"}
+            </Button>
+          </form>
+          <Typography variant="body2" align="center" sx={{ mt: 2 }}>
+            Already have an account? <Link href="/auth/signin">Sign In</Link>
+          </Typography>
+        </Paper>
+      </Grid>
+    </Grid>
   );
 }
