@@ -4,7 +4,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-tool
 
 ## Setup
 
-Create a copy of the `.env.local.template` file and name it to `.env.local`. Put the Firebase keys in `.env.local`.  
+Create a copy of the `.env.local.template` file and name it to `.env.local`. Put the Firebase keys in `.env.local`.
 
 Install dependencies by running:
 
@@ -23,4 +23,4 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details..
