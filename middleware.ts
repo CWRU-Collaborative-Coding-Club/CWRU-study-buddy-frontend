@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { SIGNIN_PATH, SIGNUP_PATH } from "./constants";
+import { SIGNIN_PATH, SIGNUP_PATH } from "@/config/constants";
 
 export async function middleware(req: NextRequest) {
   if (

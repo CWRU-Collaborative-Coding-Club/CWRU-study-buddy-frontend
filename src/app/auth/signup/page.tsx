@@ -1,16 +1,17 @@
 "use client";
 
-import { auth, db } from "@/lib/firebase";
-import Link from "@mui/material/Link";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-import { setPersistence, browserSessionPersistence } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Box, Button, Grid, Paper, TextField, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
+import {
+  Box,
+  Button,
+  Grid,
+  Paper,
+  TextField,
+  Typography,
+  Link,
+} from "@mui/material";
+import { signUp } from "@/services/user";
 
 export default function SignUp() {
   const [form, setForm] = useState({
@@ -28,7 +29,7 @@ export default function SignUp() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -40,44 +41,40 @@ export default function SignUp() {
     }
 
     try {
-      // Create user with email and password
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        form.email,
-        form.password
-      );
-      const user = userCredential.user;
-
-      // Save additional user info to Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        firstName: form.firstName,
-        lastName: form.lastName,
+      const response = await signUp({
+        first_name: form.firstName,
+        last_name: form.lastName,
         email: form.email,
-        createdAt: new Date(),
+        password: form.password,
       });
 
-      // Sign in the user
-      await signInWithEmailAndPassword(auth, form.email, form.password);
+      const { token } = response;
 
-      // Show success message
+      // Store the JWT in a cookie
+      document.cookie = `token=${token}; path=/; max-age=${3 * 24 * 60 * 60}`;
+
       alert("User registered successfully!");
-      console.log("Redirecting to dashboard...");
       router.push("/"); // Redirect to the dashboard page
     } catch (error: any) {
-      setError(error.message);
+      setError(error.response?.data?.detail || error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Grid container justifyContent="center" alignItems="center" sx={{ height: "100vh", bgcolor: "#f4f4f4" }}>
+    <Grid
+      container
+      justifyContent="center"
+      alignItems="center"
+      sx={{ height: "100vh", bgcolor: "#f4f4f4" }}
+    >
       <Grid item xs={11} sm={8} md={6} lg={4}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h4" align="center" gutterBottom>
             Sign Up
           </Typography>
-          <form onSubmit={handleSignup}>
+          <form onSubmit={handleSignUp}>
             <Box sx={{ mb: 2 }}>
               <TextField
                 fullWidth
@@ -136,7 +133,13 @@ export default function SignUp() {
                 {error}
               </Typography>
             )}
-            <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              disabled={loading}
+            >
               {loading ? "Signing Up..." : "Sign Up"}
             </Button>
           </form>

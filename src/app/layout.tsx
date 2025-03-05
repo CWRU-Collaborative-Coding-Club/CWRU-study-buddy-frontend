@@ -2,9 +2,12 @@ import * as React from "react";
 import { NextAppProvider } from "@toolpad/core/nextjs";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import ChatIcon from "@mui/icons-material/Chat";
+import  UsersIcon from "@mui/icons-material/PeopleAlt";
+import AgentsIcon from "@mui/icons-material/ViewModule";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import type { Navigation } from "@toolpad/core/AppProvider";
-import theme from "../theme";
+import theme from "../../theme";
 import { Suspense } from "react";
 import { signOutUser } from "./auth/signout";
 
@@ -25,7 +28,12 @@ const NAVIGATION: Navigation = [
   {
     segment: "users",
     title: "Users",
-    icon: <DashboardIcon />,
+    icon: <UsersIcon />,
+  },
+  {
+    segment: "modules",
+    title: "Modules",
+    icon: <AgentsIcon />,
   },
   {
     kind: "divider",
@@ -37,11 +45,11 @@ const NAVIGATION: Navigation = [
   {
     segment: "chat",
     title: "Chat",
-    icon: <ShoppingCartIcon />,
+    icon: <ChatIcon/>,
     children: [
       {
         segment: "",
-        title: "Chat",
+        title: "Test",
       },
     ],
   },
