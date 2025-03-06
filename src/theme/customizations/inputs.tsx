@@ -393,17 +393,31 @@ export const inputsCustomizations: Components<Theme> = {
   },
   MuiInputLabel: {
     styleOverrides: {
-      root: {
-        transform: "translate(4px, -11px) scale(0.75)",
+      root: ({ theme }) => ({
+        transform: "translate(12px, -9px) scale(0.85)",
+        padding: "0 8px",
+        fontSize: "1rem",
+        fontWeight: 500,
+        backgroundColor: theme.palette.background.default,
+        borderRadius: "4px",
         [`&.${outlinedInputClasses.focused}`]: {
-          transform: "translate(4px, -12px) scale(0.75)",
+          transform: "translate(12px, -9px) scale(0.85)",
         },
-      },
+        "&.MuiFormLabel-filled": {
+          transform: "translate(12px, -9px) scale(0.85)",
+        },
+        ...theme.applyStyles("dark", {
+          backgroundColor: theme.palette.background.default,
+        }),
+      }),
     },
   },
   MuiOutlinedInput: {
     styleOverrides: {
       input: {
+        padding: 0,
+      },
+      inputMultiline: {
         padding: 0,
       },
       root: ({ theme }) => ({
@@ -431,7 +445,8 @@ export const inputsCustomizations: Components<Theme> = {
               size: "small",
             },
             style: {
-              height: "2.25rem",
+              minHeight: "2.25rem",
+              height: "auto",
             },
           },
           {
@@ -439,10 +454,24 @@ export const inputsCustomizations: Components<Theme> = {
               size: "medium",
             },
             style: {
-              height: "2.5rem",
+              minHeight: "2.5rem",
+              height: "auto",
             },
           },
         ],
+        // Special handling for multiline inputs
+        "&.MuiInputBase-multiline": {
+          height: "auto",
+          minHeight: "5rem",
+          alignItems: "flex-start",
+          paddingTop: "12px",
+          paddingBottom: "12px",
+          "& .MuiInputBase-inputMultiline": {
+            height: "100%",
+            overflow: "auto",
+            resize: "vertical",
+          }
+        },
       }),
       notchedOutline: {
         border: "none",

@@ -24,6 +24,7 @@ export async function getModules(
   page: number;
   page_size: number;
   total: number;
+  total_count: number;
 }> {
   try {
     const response = await client({

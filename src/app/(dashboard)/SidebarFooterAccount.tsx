@@ -13,6 +13,9 @@ import {
   SignOutButton,
 } from "@toolpad/core/Account";
 import { SidebarFooterProps } from "@toolpad/core/DashboardLayout";
+import { useEffect } from "react";
+import { getCookie } from "@/utils/cookies";
+import { SIGNIN_PATH } from "@/config/constants";
 
 function AccountSidebarPreview(props: AccountPreviewProps & { mini: boolean }) {
   const { handleClick, open, mini } = props;
@@ -76,6 +79,12 @@ export default function SidebarFooterAccount({ mini }: SidebarFooterProps) {
     () => createPopoverComponent(mini),
     [mini]
   );
+
+  useEffect(() => {
+    if (!getCookie("token") && typeof window !== "undefined") {
+      window.location.href = SIGNIN_PATH;
+    }
+  }, []);
   return (
     <Account
       slots={{

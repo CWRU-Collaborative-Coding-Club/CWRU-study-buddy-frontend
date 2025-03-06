@@ -61,7 +61,7 @@ async function JWTSignIn(
 
       const { token } = response;
 
-      // Store the JWT in a cookie
+      // Store the JWT in a cookie with a 3-day expiry
       document.cookie = `token=${token}; path=/; max-age=${3 * 24 * 60 * 60}`;
 
       console.log("Sign in successful");

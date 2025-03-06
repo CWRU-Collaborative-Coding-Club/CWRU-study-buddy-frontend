@@ -25,18 +25,39 @@ import { Module } from "../../../models/module";
 import { useAuth } from "../../../hooks/useAuth";
 
 // DataGrid component
-const CustomDataGrid: React.FC<{ rows: Module[]; columns: GridColDef[] }> = ({
+const CustomDataGrid: React.FC<{
+  rows: Module[];
+  columns: GridColDef[];
+  paginationModel: {
+    page: number;
+    pageSize: number;
+  };
+  rowCount: number;
+  loading: boolean;
+  onPaginationModelChange: (model: { page: number; pageSize: number }) => void;
+}> = ({
   rows,
   columns,
+  paginationModel,
+  rowCount,
+  loading,
+  onPaginationModelChange,
 }) => {
   return (
-    <div style={{ height: 400, width: "100%" }}>
+    <div style={{ height: "calc(100vh - 180px)", width: "100%" }}>
       <DataGrid
         rows={rows}
         columns={columns}
-        pagination
-        pageSizeOptions={[5]}
+        pageSizeOptions={[10, 25, 50, 100]}
+        paginationModel={paginationModel}
+        paginationMode="server"
+        onPaginationModelChange={onPaginationModelChange}
+        rowCount={rowCount}
         getRowId={(row) => row.agent_id}
+        autoHeight={false}
+        disableRowSelectionOnClick
+        loading={loading}
+        pagination
       />
     </div>
   );
@@ -53,24 +74,44 @@ export default function ModulesPage() {
   const [modulePrompt, setModulePrompt] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [searchValue, setSearchValue] = React.useState("");
+  const [paginationModel, setPaginationModel] = React.useState({
+    page: 0,
+    pageSize: 10,
+  });
+  const [totalRows, setTotalRows] = React.useState(0);
+  const [totalModuleCount, setTotalModuleCount] = React.useState(0);
 
   // Use auth hook instead of manual token decoding
   const { accessLevel, isManager } = useAuth();
 
-  // Fetch modules on component mount
-  useEffect(() => {
-    const fetchModules = async () => {
-      try {
-        const modules = await getModules();
-        console.log(modules);
-        setRows(modules.modules);
-      } catch (error) {
-        console.error("Error fetching modules:", error);
+  // Fetch modules with pagination and search
+  const fetchModules = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getModules(
+        false,
+        paginationModel.page + 1, // API uses 1-indexed pages
+        paginationModel.pageSize,
+        searchValue || undefined
+      );
+      setRows(response.modules);
+      setTotalRows(response.total);
+      // Set total module count from the API response
+      if ('total_count' in response) {
+        setTotalModuleCount(response.total_count);
       }
-    };
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching modules:", error);
+      setLoading(false);
+    }
+  }, [paginationModel.page, paginationModel.pageSize, searchValue]);
 
+  // Fetch modules when pagination or search changes
+  useEffect(() => {
     fetchModules();
-  }, []);
+  }, [fetchModules]);
 
   // Edit module handler
   const handleEditModule = (module: Module) => {
@@ -93,16 +134,13 @@ export default function ModulesPage() {
     setError(null);
 
     try {
-      const updatedModule = await editModule(selectedModule.id, {
+      await editModule(selectedModule.id, {
         title: moduleTitle,
         system_prompt: modulePrompt,
       });
 
-      setRows((prevRows) =>
-        prevRows.map((row) =>
-          row.id === updatedModule.id ? updatedModule : row
-        )
-      );
+      // Refresh the module list to reflect changes
+      await fetchModules();
       handleEditClose();
     } catch (error: any) {
       setError(error.message);
@@ -120,7 +158,8 @@ export default function ModulesPage() {
 
     try {
       await deleteModule(id);
-      setRows((prevRows) => prevRows.filter((row) => row.id !== id));
+      // Refresh the module list to reflect changes
+      await fetchModules();
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -134,18 +173,27 @@ export default function ModulesPage() {
     setError(null);
 
     try {
-      const newModule = await createModule({
+      await createModule({
         title: moduleTitle,
         system_prompt: modulePrompt,
       });
 
-      setRows((prevRows) => [...prevRows, newModule]);
+      // Refresh the module list to reflect changes
+      await fetchModules();
       handleEditClose();
     } catch (error: any) {
       setError(error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle pagination change
+  const handlePaginationModelChange = (newModel: {
+    page: number;
+    pageSize: number;
+  }) => {
+    setPaginationModel(newModel);
   };
 
   // Practice module handler
@@ -156,8 +204,13 @@ export default function ModulesPage() {
   // DataGrid columns
   const columns: GridColDef[] = [
     { field: "agent_id", headerName: "ID", width: 90 },
-    { field: "name", headerName: "Title", width: 150 },
-    { field: "system_prompt", headerName: "System Prompt", width: 300 },
+    { field: "name", headerName: "Title", width: 200, flex: 1 },
+    {
+      field: "system_prompt",
+      headerName: "System Prompt",
+      width: 300,
+      flex: 2,
+    },
     {
       field: "actions",
       headerName: "Actions",
@@ -189,25 +242,65 @@ export default function ModulesPage() {
     },
   ];
 
+  // Debounced search handler
+  const handleSearchChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+      // Reset to page 0 when searching
+      setPaginationModel((prev) => ({
+        ...prev,
+        page: 0,
+      }));
+    },
+    []
+  );
+
   return (
     <Box>
-      <CustomDataGrid rows={rows} columns={columns} />
-      {isManager() && (
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<EditIcon />}
-          onClick={() => {
-            setSelectedModule(null);
-            setModuleTitle("");
-            setModulePrompt("");
-            setEditOpen(true);
-          }}
-          sx={{ mt: 2 }}
-        >
-          Add Module
-        </Button>
-      )}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <TextField
+          label="Search modules"
+          variant="outlined"
+          size="small"
+          value={searchValue}
+          onChange={handleSearchChange}
+          sx={{ width: "300px" }}
+          placeholder="Search by title or prompt"
+        />
+        {isManager() && (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={() => {
+              setSelectedModule(null);
+              setModuleTitle("");
+              setModulePrompt("");
+              setEditOpen(true);
+            }}
+          >
+            Add Module
+          </Button>
+        )}
+      </Box>
+      <Box sx={{ position: 'relative' }}>
+        <CustomDataGrid
+          rows={rows}
+          columns={columns}
+          paginationModel={paginationModel}
+          rowCount={totalModuleCount}
+          loading={loading}
+          onPaginationModelChange={handlePaginationModelChange}
+        />
+      </Box>
       <Dialog open={editOpen} onClose={handleEditClose}>
         <DialogTitle>
           {selectedModule ? "Edit Module" : "Add Module"}
