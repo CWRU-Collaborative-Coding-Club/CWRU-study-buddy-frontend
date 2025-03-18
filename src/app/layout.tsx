@@ -1,15 +1,51 @@
+"use client";
 import * as React from "react";
 import { NextAppProvider } from "@toolpad/core/nextjs";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ChatIcon from "@mui/icons-material/Chat";
-import  UsersIcon from "@mui/icons-material/PeopleAlt";
+import UsersIcon from "@mui/icons-material/PeopleAlt";
 import AgentsIcon from "@mui/icons-material/ViewModule";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import type { Navigation } from "@toolpad/core/AppProvider";
 import theme from "../../theme";
 import { Suspense } from "react";
 import { signOutUser } from "./auth/signout";
+import { jwtDecode } from "jwt-decode";
+
+interface DecodedToken {
+  email: string;
+  id: string;
+  name: string;
+}
+
+function getCookie(name: string) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift();
+  return null;
+}
+
+const token = getCookie("token");
+
+let user = {
+  email: "",
+  id: "",
+  name: "",
+};
+
+if (token) {
+  try {
+    const decodedToken = jwtDecode<DecodedToken>(token);
+    user = {
+      email: decodedToken.email,
+      id: decodedToken.id,
+      name: decodedToken.name,
+    };
+  } catch (error) {
+    console.error("Invalid token:", error);
+  }
+}
 
 const NAVIGATION: Navigation = [
   {
@@ -45,7 +81,7 @@ const NAVIGATION: Navigation = [
   {
     segment: "chat",
     title: "Chat",
-    icon: <ChatIcon/>,
+    icon: <ChatIcon />,
     children: [
       {
         segment: "",
@@ -56,21 +92,17 @@ const NAVIGATION: Navigation = [
 ];
 
 const AUTHENTICATION = {
-  signIn: async () => {
-    "use server";
-    if (typeof window !== "undefined") {
-      window.location.href = "/auth/signin";
-    }
-  },
+  signIn: () => {},
   signOut: signOutUser,
 };
 
 const SESSION = {
   user: {
-    email: "email",
-    id: "email",
-    image: "https://i.imgur.com/u6oVEqw.jpeg",
-    name: "User",
+    email: user.email,
+    id: user.id,
+    image:
+      "https://www.google.com/url?sa=i&url=https%3A%2F%2Fpngtree.com%2Ffree-png-vectors%2Fuser-profile&psig=AOvVaw1N1zxnySa37enNtU9CcFCX&ust=1741322668203000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKiIi8zS9IsDFQAAAAAdAAAAABAQ",
+    name: user.name,
   },
 };
 
@@ -87,6 +119,26 @@ export default async function RootLayout({
               navigation={NAVIGATION}
               authentication={AUTHENTICATION}
               session={SESSION}
+              branding={{
+                logo: (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      height: "100%",
+                      marginLeft: "1rem",
+                    }}
+                  >
+                    <img
+                      src="/eaton-logo-mobile.png"
+                      alt="Eaton logo"
+                      width={100}
+                    />
+                  </div>
+                ),
+                title: "",
+                homeUrl: "/",
+              }}
             >
               {children}
             </NextAppProvider>

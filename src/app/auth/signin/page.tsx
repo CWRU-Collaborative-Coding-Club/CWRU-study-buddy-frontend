@@ -29,9 +29,7 @@ function SignUpLink() {
 
 function DemoInfo() {
   return (
-    <Alert severity="info">
-      Welcome to Eaton!
-    </Alert>
+    <></>
   );
 }
 
