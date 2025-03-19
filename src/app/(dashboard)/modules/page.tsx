@@ -9,6 +9,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   Alert,
   Box,
@@ -17,6 +18,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  InputAdornment,
   TextField,
   Typography,
 } from "@mui/material";
@@ -27,24 +29,40 @@ import { useAuth } from "../../../hooks/useAuth";
 import { Module } from "../../../models/module";
 
 // DataGrid component
-const CustomDataGrid: React.FC<{ rows: Module[]; columns: GridColDef[] }> = ({
+const CustomDataGrid: React.FC<{
+  rows: Module[];
+  columns: GridColDef[];
+  paginationModel: {
+    page: number;
+    pageSize: number;
+  };
+  rowCount: number;
+  loading: boolean;
+  onPaginationModelChange: (model: { page: number; pageSize: number }) => void;
+}> = ({
   rows,
   columns,
+  paginationModel,
+  rowCount,
+  loading,
+  onPaginationModelChange,
 }) => {
+  
   return (
     <div style={{ height: "calc(100vh - 180px)", width: "100%" }}>
       <DataGrid
         rows={rows}
         columns={columns}
-        pagination
         pageSizeOptions={[5, 10, 25, 50]}
-        initialState={{
-          pagination: { paginationModel: { pageSize: 10 } },
-        }}
+        paginationModel={paginationModel}
+        paginationMode="server"
+        onPaginationModelChange={onPaginationModelChange}
+        rowCount={rowCount || rows.length} // Fallback to rows.length if rowCount is 0
+        getRowId={(row) => row.agent_id}
         autoHeight={false}
         disableRowSelectionOnClick
-        getRowId={(row) => row.agent_id}
-        columnVisibilityModel={{}}
+        loading={loading}
+        pagination
         sx={{ 
           borderRadius: 1,
           '& .MuiDataGrid-columnHeaders': {
@@ -52,6 +70,10 @@ const CustomDataGrid: React.FC<{ rows: Module[]; columns: GridColDef[] }> = ({
           },
           '& .MuiDataGrid-cell:focus': {
             outline: 'none',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            display: 'flex',
+            justifyContent: 'flex-end',
           }
         }}
       />
@@ -72,24 +94,67 @@ export default function ModulesPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [practiceOpen, setPracticeOpen] = React.useState(false);
   const [selectedPracticeModule, setSelectedPracticeModule] = React.useState<Module | null>(null);
+  const [searchValue, setSearchValue] = React.useState("");
+  const [paginationModel, setPaginationModel] = React.useState({
+    page: 0,
+    pageSize: 10,
+  });
+  const [totalModuleCount, setTotalModuleCount] = React.useState(0);
 
   // Use auth hook instead of manual token decoding
   const { accessLevel, isManager } = useAuth();
 
-  // Function to fetch modules data
-  const fetchModules = async () => {
+  // Fetch modules with pagination and search
+  const fetchModules = React.useCallback(async () => {
     try {
-      const modules = await getModules();
-      setRows(modules.modules);
+      setLoading(true);
+      
+      // Try to get modules with pagination
+      let response;
+      try {
+        response = await getModules(
+          false,
+          paginationModel.page + 1, // API uses 1-indexed pages
+          paginationModel.pageSize,
+          searchValue || undefined
+        );
+      } catch (apiError) {
+        // If it fails, try without pagination as fallback
+        response = await getModules();
+      }
+      
+      // Check if we have a valid response
+      if (response && response.modules) {
+        setRows(response.modules);
+        
+        // Use total for rowCount in DataGrid pagination
+        if (typeof response.total === 'number') {
+          setTotalModuleCount(response.total);
+        } else if (typeof response.total_count === 'number') {
+          setTotalModuleCount(response.total_count);
+        } else {
+          // If no total provided, use the length of modules array
+          setTotalModuleCount(response.modules.length);
+        }
+      } else {
+        // Fallback to empty array if no valid response
+        setRows([]);
+        setTotalModuleCount(0);
+      }
+      
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching modules:", error);
+      setLoading(false);
+      // Reset to empty state on error
+      setRows([]);
+      setTotalModuleCount(0);
     }
-  };
+  }, [paginationModel.page, paginationModel.pageSize, searchValue]);
 
-  // Fetch modules on component mount
+  // Fetch modules when pagination or search changes
   useEffect(() => {
     fetchModules();
-  }, []);
+  }, [fetchModules]);
 
   // Edit module handler
   const handleEditModule = (module: Module) => {
@@ -166,6 +231,31 @@ export default function ModulesPage() {
     }
   };
 
+  // Handle pagination change
+  const handlePaginationModelChange = (newModel: {
+    page: number;
+    pageSize: number;
+  }) => {
+    setPaginationModel(newModel);
+    
+    // We don't need to manually call fetchModules here because
+    // it will be triggered by the dependency in useEffect
+  };
+
+  // Debounced search handler
+  const handleSearchChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+      // Reset to page 0 when searching
+      setPaginationModel((prev) => ({
+        ...prev,
+        page: 0,
+      }));
+    },
+    []
+  );
+
   // Practice module handler
   const handlePracticeModule = (module: Module) => {
     setSelectedPracticeModule(module);
@@ -231,7 +321,23 @@ export default function ModulesPage() {
         </Alert>
       )}
       
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <TextField
+          label="Search modules"
+          variant="outlined"
+          size="small"
+          value={searchValue}
+          onChange={handleSearchChange}
+          sx={{ width: "300px" }}
+          placeholder="Search by title or prompt"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
         <Box sx={{ flexGrow: 1 }} />
         {isManager() && (
           <Button
@@ -252,7 +358,17 @@ export default function ModulesPage() {
         )}
       </Box>
       
-      <CustomDataGrid rows={rows} columns={columns} />
+      <Box sx={{ position: 'relative', flexGrow: 1 }}>
+        <CustomDataGrid 
+          rows={rows}
+          columns={columns} 
+          paginationModel={paginationModel}
+          rowCount={totalModuleCount}
+          loading={loading}
+          onPaginationModelChange={handlePaginationModelChange}
+        />
+      </Box>
+
       <Dialog open={editOpen} onClose={handleEditClose} maxWidth="md" fullWidth>
         <DialogTitle>
           {selectedModule ? "Edit Module" : "Add Module"}
@@ -337,6 +453,6 @@ export default function ModulesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-  </Box>
+    </Box>
   );
 }

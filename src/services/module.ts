@@ -27,17 +27,47 @@ export async function getModules(
   total_count: number;
 }> {
   try {
+    const params: any = {
+      filter_deleted: filterDeleted,
+    };
+
+    // Only add pagination params if they're valid numbers
+    if (typeof page === "number" && !isNaN(page)) {
+      params.page = page;
+    }
+
+    if (typeof pageSize === "number" && !isNaN(pageSize)) {
+      params.page_size = pageSize;
+    }
+
+    // Add search param if it exists
+    if (search) {
+      params.search = search;
+    }
+
     const response = await client({
       url: api.listApi,
       method: "GET",
-      params: {
-        filter_deleted: filterDeleted,
-        page,
-        page_size: pageSize,
-        search,
-      },
+      params: params,
     });
-    return response.data;
+
+    console.log("API response data:", response.data);
+
+    // Handle case where response might not have expected structure
+    const result = response.data || {};
+
+    // Ensure modules is always an array
+    if (!result.modules) {
+      result.modules = [];
+    }
+
+    // Ensure total is a number for pagination
+    if (typeof result.total !== "number") {
+      // Try to get total from total_count or fall back to modules length
+      result.total = result.total_count || result.modules.length || 0;
+    }
+
+    return result;
   } catch (error) {
     console.error("Error fetching modules:", error);
     throw error;
