@@ -1,63 +1,59 @@
 "use client";
-import * as React from "react";
-import { useEffect } from "react";
-import { DataGrid, GridColDef, GridActionsCellItem } from "@mui/x-data-grid";
 import {
-  Button,
-  TextField,
+  createModule,
+  deleteModule,
+  editModule,
+  getModules,
+} from "@/services/module";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import {
+  Alert,
   Box,
+  Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  TextField,
   Typography,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import {
-  getModules,
-  createModule,
-  deleteModule,
-  editModule,
-} from "@/services/module";
-import { Module } from "../../../models/module";
+import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import * as React from "react";
+import { useEffect } from "react";
 import { useAuth } from "../../../hooks/useAuth";
+import { Module } from "../../../models/module";
 
 // DataGrid component
-const CustomDataGrid: React.FC<{
-  rows: Module[];
-  columns: GridColDef[];
-  paginationModel: {
-    page: number;
-    pageSize: number;
-  };
-  rowCount: number;
-  loading: boolean;
-  onPaginationModelChange: (model: { page: number; pageSize: number }) => void;
-}> = ({
+const CustomDataGrid: React.FC<{ rows: Module[]; columns: GridColDef[] }> = ({
   rows,
   columns,
-  paginationModel,
-  rowCount,
-  loading,
-  onPaginationModelChange,
 }) => {
   return (
     <div style={{ height: "calc(100vh - 180px)", width: "100%" }}>
       <DataGrid
         rows={rows}
         columns={columns}
-        pageSizeOptions={[10, 25, 50, 100]}
-        paginationModel={paginationModel}
-        paginationMode="server"
-        onPaginationModelChange={onPaginationModelChange}
-        rowCount={rowCount}
-        getRowId={(row) => row.agent_id}
+        pagination
+        pageSizeOptions={[5, 10, 25, 50]}
+        initialState={{
+          pagination: { paginationModel: { pageSize: 10 } },
+        }}
         autoHeight={false}
         disableRowSelectionOnClick
-        loading={loading}
-        pagination
+        getRowId={(row) => row.agent_id}
+        columnVisibilityModel={{}}
+        sx={{ 
+          borderRadius: 1,
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+          },
+          '& .MuiDataGrid-cell:focus': {
+            outline: 'none',
+          }
+        }}
       />
     </div>
   );
@@ -74,49 +70,31 @@ export default function ModulesPage() {
   const [modulePrompt, setModulePrompt] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [searchValue, setSearchValue] = React.useState("");
-  const [paginationModel, setPaginationModel] = React.useState({
-    page: 0,
-    pageSize: 10,
-  });
-  const [totalRows, setTotalRows] = React.useState(0);
-  const [totalModuleCount, setTotalModuleCount] = React.useState(0);
+  const [practiceOpen, setPracticeOpen] = React.useState(false);
+  const [selectedPracticeModule, setSelectedPracticeModule] = React.useState<Module | null>(null);
 
   // Use auth hook instead of manual token decoding
   const { accessLevel, isManager } = useAuth();
 
-  // Fetch modules with pagination and search
-  const fetchModules = React.useCallback(async () => {
+  // Function to fetch modules data
+  const fetchModules = async () => {
     try {
-      setLoading(true);
-      const response = await getModules(
-        false,
-        paginationModel.page + 1, // API uses 1-indexed pages
-        paginationModel.pageSize,
-        searchValue || undefined
-      );
-      setRows(response.modules);
-      setTotalRows(response.total);
-      // Set total module count from the API response
-      if ('total_count' in response) {
-        setTotalModuleCount(response.total_count);
-      }
-      setLoading(false);
+      const modules = await getModules();
+      setRows(modules.modules);
     } catch (error) {
       console.error("Error fetching modules:", error);
-      setLoading(false);
     }
-  }, [paginationModel.page, paginationModel.pageSize, searchValue]);
+  };
 
-  // Fetch modules when pagination or search changes
+  // Fetch modules on component mount
   useEffect(() => {
     fetchModules();
-  }, [fetchModules]);
+  }, []);
 
   // Edit module handler
   const handleEditModule = (module: Module) => {
     setSelectedModule(module);
-    setModuleTitle(module.title);
+    setModuleTitle(module.name);
     setModulePrompt(module.system_prompt);
     setEditOpen(true);
   };
@@ -134,12 +112,12 @@ export default function ModulesPage() {
     setError(null);
 
     try {
-      await editModule(selectedModule.id, {
+      await editModule(selectedModule.agent_id, {
         title: moduleTitle,
         system_prompt: modulePrompt,
       });
-
-      // Refresh the module list to reflect changes
+      
+      // Refresh data from server
       await fetchModules();
       handleEditClose();
     } catch (error: any) {
@@ -158,7 +136,7 @@ export default function ModulesPage() {
 
     try {
       await deleteModule(id);
-      // Refresh the module list to reflect changes
+      // Refresh data from server
       await fetchModules();
     } catch (error: any) {
       setError(error.message);
@@ -177,8 +155,8 @@ export default function ModulesPage() {
         title: moduleTitle,
         system_prompt: modulePrompt,
       });
-
-      // Refresh the module list to reflect changes
+      
+      // Refresh data from server
       await fetchModules();
       handleEditClose();
     } catch (error: any) {
@@ -188,38 +166,40 @@ export default function ModulesPage() {
     }
   };
 
-  // Handle pagination change
-  const handlePaginationModelChange = (newModel: {
-    page: number;
-    pageSize: number;
-  }) => {
-    setPaginationModel(newModel);
-  };
-
   // Practice module handler
   const handlePracticeModule = (module: Module) => {
-    window.location.href = `/chat?moduleTitle=${encodeURIComponent(module.title)}&modulePrompt=${encodeURIComponent(module.system_prompt)}`;
+    setSelectedPracticeModule(module);
+    setPracticeOpen(true);
   };
 
   // DataGrid columns
   const columns: GridColDef[] = [
-    { field: "agent_id", headerName: "ID", width: 90 },
-    { field: "name", headerName: "Title", width: 200, flex: 1 },
-    {
-      field: "system_prompt",
-      headerName: "System Prompt",
-      width: 300,
+    { 
+      field: "agent_id", 
+      headerName: "ID", 
+      flex: 1,
+      minWidth: 220 
+    },
+    { 
+      field: "name", 
+      headerName: "Title", 
       flex: 2,
+      minWidth: 250 
     },
     {
       field: "actions",
       headerName: "Actions",
-      width: 150,
+      flex: 1.5,
+      minWidth: 220,
       renderCell: (params) => (
         <>
           <Button
             startIcon={<PlayArrowIcon />}
             onClick={() => handlePracticeModule(params.row)}
+            variant="contained"
+            color="primary"
+            size="small"
+            sx={{ mr: 1, fontSize: '0.8125rem', py: 0.5 }}
           >
             Practice
           </Button>
@@ -229,11 +209,12 @@ export default function ModulesPage() {
                 icon={<EditIcon />}
                 label="Edit"
                 onClick={() => handleEditModule(params.row)}
+                sx={{ mr: 1 }}
               />
               <GridActionsCellItem
                 icon={<DeleteIcon />}
                 label="Delete"
-                onClick={() => handleDeleteModule(params.row.id)}
+                onClick={() => handleDeleteModule(params.row.agent_id)}
               />
             </>
           )}
@@ -242,44 +223,23 @@ export default function ModulesPage() {
     },
   ];
 
-  // Debounced search handler
-  const handleSearchChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      setSearchValue(newValue);
-      // Reset to page 0 when searching
-      setPaginationModel((prev) => ({
-        ...prev,
-        page: 0,
-      }));
-    },
-    []
-  );
-
   return (
-    <Box>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <TextField
-          label="Search modules"
-          variant="outlined"
-          size="small"
-          value={searchValue}
-          onChange={handleSearchChange}
-          sx={{ width: "300px" }}
-          placeholder="Search by title or prompt"
-        />
+    <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <Box sx={{ flexGrow: 1 }} />
         {isManager() && (
           <Button
             variant="contained"
-            color="primary"
-            startIcon={<EditIcon />}
+            color="secondary"
+            startIcon={<AddIcon />}
+            size="small"
+            sx={{ fontSize: '0.8125rem', py: 0.5 }}
             onClick={() => {
               setSelectedModule(null);
               setModuleTitle("");
@@ -291,21 +251,13 @@ export default function ModulesPage() {
           </Button>
         )}
       </Box>
-      <Box sx={{ position: 'relative' }}>
-        <CustomDataGrid
-          rows={rows}
-          columns={columns}
-          paginationModel={paginationModel}
-          rowCount={totalModuleCount}
-          loading={loading}
-          onPaginationModelChange={handlePaginationModelChange}
-        />
-      </Box>
-      <Dialog open={editOpen} onClose={handleEditClose}>
+      
+      <CustomDataGrid rows={rows} columns={columns} />
+      <Dialog open={editOpen} onClose={handleEditClose} maxWidth="md" fullWidth>
         <DialogTitle>
           {selectedModule ? "Edit Module" : "Add Module"}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           <TextField
             autoFocus
             margin="dense"
@@ -321,7 +273,7 @@ export default function ModulesPage() {
             type="text"
             fullWidth
             multiline
-            rows={4}
+            rows={8}
             value={modulePrompt}
             onChange={(e) => setModulePrompt(e.target.value)}
           />
@@ -340,6 +292,51 @@ export default function ModulesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      <Dialog 
+        open={practiceOpen} 
+        onClose={() => setPracticeOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Practice Module</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="h6" gutterBottom>{selectedPracticeModule?.name}</Typography>
+          <Box sx={{ 
+            maxHeight: '60vh', 
+            overflow: 'auto', 
+            border: '1px solid #e0e0e0', 
+            borderRadius: 1, 
+            p: 2,
+            overflowX: 'hidden',
+            overflowY: 'auto'
+          }}>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word'
+              }}
+            >
+              {selectedPracticeModule?.system_prompt}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPracticeOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              window.location.href = `/chat?moduleName=${encodeURIComponent(selectedPracticeModule?.name || '')}&modulePrompt=${encodeURIComponent(selectedPracticeModule?.system_prompt || '')}`;
+            }}
+            variant="contained"
+            color="primary"
+          >
+            Go to Chat
+          </Button>
+        </DialogActions>
+      </Dialog>
+  </Box>
   );
 }
