@@ -416,7 +416,20 @@ export default function ModulesPage() {
       >
         <DialogTitle>Practice Module</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="h6" gutterBottom>{selectedPracticeModule?.name}</Typography>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              width: '100%',
+              maxWidth: '100%',
+              whiteSpace: 'normal'
+            }}
+          >
+            {selectedPracticeModule?.name}
+          </Typography>
           <Box sx={{ 
             maxHeight: '60vh', 
             overflow: 'auto', 
