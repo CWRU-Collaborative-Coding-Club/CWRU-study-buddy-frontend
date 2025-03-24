@@ -75,22 +75,9 @@ const NAVIGATION: Navigation = [
     icon: <AgentsIcon />,
   },
   {
-    kind: "divider",
-  },
-  {
-    kind: "header",
-    title: "Analytics",
-  },
-  {
-    segment: "chat",
-    title: "Chat",
-    icon: <ChatIcon />,
-    children: [
-      {
-        segment: "",
-        title: "Test",
-      },
-    ],
+    segment: "chatHistory",
+    title: "Chat History",
+    icon: <ChatIcon/>,
   },
 ];
 

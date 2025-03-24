@@ -146,3 +146,6 @@ dist-ssr
 .yarn/install-state.gz
 node_modules
 .vercel
+
+# notes
+notes.txt

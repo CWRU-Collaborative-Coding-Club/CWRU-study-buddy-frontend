@@ -6,11 +6,11 @@ import {
   EditModuleRequest,
 } from "../models/module";
 
-const prefix = "/module";
+const prefix = "module";
 
 const api = {
-  listApi: `${prefix}/list`,
-  createApi: `${prefix}/create`,
+  listApi: `/${prefix}/list`,
+  createApi: `/${prefix}/create`,
 };
 
 // Get modules with pagination and filtering
@@ -118,5 +118,19 @@ export async function editModule(
   } catch (error) {
     console.error("Error editing module:", error);
     throw error;
+  }
+}
+
+// Add to src/services/module.ts
+export async function getModuleTitle(agentId: string): Promise<string> {
+  try {
+    const response = await client({
+      url: `/module/${agentId}/title`,
+      method: "GET"
+    });
+    return response.data.title;
+  } catch (error) {
+    console.error(`Error fetching title for module ${agentId}:`, error);
+    return agentId; // Fallback to showing the ID if we can't get the title
   }
 }
