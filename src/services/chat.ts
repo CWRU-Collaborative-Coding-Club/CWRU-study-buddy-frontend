@@ -2,7 +2,7 @@ import client from "../lib/http/request";
 import { ChatListResponse, ChatDetailsResponse, ChatStatusUpdate, MessageAdd } from '@/models/chat';
 
 // API paths
-const path = "chat";
+const path = "chat-history";
 
 const api = {
   listChats: `/${path}/list`,
