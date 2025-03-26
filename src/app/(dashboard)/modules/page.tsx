@@ -95,6 +95,7 @@ export default function ModulesPage() {
   const [practiceOpen, setPracticeOpen] = React.useState(false);
   const [selectedPracticeModule, setSelectedPracticeModule] = React.useState<Module | null>(null);
   const [searchValue, setSearchValue] = React.useState("");
+  const [inputValue, setInputValue] = React.useState("");
   const [paginationModel, setPaginationModel] = React.useState({
     page: 0,
     pageSize: 10,
@@ -242,19 +243,24 @@ export default function ModulesPage() {
     // it will be triggered by the dependency in useEffect
   };
 
-  // Debounced search handler
-  const handleSearchChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      setSearchValue(newValue);
+  // Input change handler (immediate update for typing)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  // Debounced search effect
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearchValue(inputValue);
       // Reset to page 0 when searching
       setPaginationModel((prev) => ({
         ...prev,
         page: 0,
       }));
-    },
-    []
-  );
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [inputValue]);
 
   // Practice module handler
   const handlePracticeModule = (module: Module) => {
@@ -321,31 +327,26 @@ export default function ModulesPage() {
         </Alert>
       )}
       
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField
-          label="Search modules"
           variant="outlined"
-          size="small"
-          value={searchValue}
-          onChange={handleSearchChange}
-          sx={{ width: "300px" }}
-          placeholder="Search by title or prompt"
+          placeholder="Search modules by title..."
+          value={inputValue}
+          onChange={handleInputChange}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon />
+                <SearchIcon color="action" />
               </InputAdornment>
             ),
           }}
+          sx={{ flexGrow: 1 }}
         />
-        <Box sx={{ flexGrow: 1 }} />
         {isManager() && (
           <Button
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}
-            size="small"
-            sx={{ fontSize: '0.8125rem', py: 0.5 }}
             onClick={() => {
               setSelectedModule(null);
               setModuleTitle("");
