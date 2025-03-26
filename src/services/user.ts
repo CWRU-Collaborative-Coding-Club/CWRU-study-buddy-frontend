@@ -67,7 +67,7 @@ export function listUsers(
   filterType: string = "all", 
   search: string = "", 
   page: number = 1, 
-  pageSize: number = 10
+  pageSize: number = 25
 ): Promise<User[]> {
   return client({
     url: api.listUsers,
@@ -79,7 +79,7 @@ export function listUsers(
 export function listAllowedUsers(
   search: string = "", 
   page: number = 1, 
-  pageSize: number = 50
+  pageSize: number = 25
 ): Promise<{
   allowed_users: Array<{
     email: string;
@@ -101,7 +101,7 @@ export function listAllowedUsers(
 export async function listAllPendingUsers(search: string = ""): Promise<any[]> {
   // Start with page 1
   let page = 1;
-  const pageSize = 50; // Request larger page size
+  const pageSize = 25; // Request larger page size
   let allUsers: any[] = [];
   let hasMoreData = true;
   
