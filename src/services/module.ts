@@ -4,6 +4,7 @@ import {
   Module,
   CreateModuleRequest,
   EditModuleRequest,
+  CreateChatRequest,
 } from "../models/module";
 
 const prefix = "module";
@@ -11,6 +12,7 @@ const prefix = "module";
 const api = {
   listApi: `/${prefix}/list`,
   createApi: `/${prefix}/create`,
+  createChatApi: `/chat/create`,
 };
 
 // Get modules with pagination and filtering
@@ -99,6 +101,17 @@ export async function deleteModule(moduleId: string): Promise<any> {
     console.error("Error deleting module:", error);
     throw error;
   }
+}
+
+// Create a new module
+export async function createChatAPI(data: CreateChatRequest): Promise<Module> {
+  const response = await client({
+    url: api.createChatApi,
+    method: "post",
+    data,
+  });
+
+  return response.data;
 }
 
 // Edit an existing module

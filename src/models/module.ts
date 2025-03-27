@@ -1,4 +1,5 @@
 export interface Module {
+  chat_id: Module;
   name: string;
   agent_id: string;
   modified_by: string;
@@ -12,6 +13,10 @@ export interface Module {
 export interface CreateModuleRequest {
   title: string;
   system_prompt: string;
+}
+
+export interface CreateChatRequest {
+  agent_id?: string;
 }
 
 export interface EditModuleRequest {

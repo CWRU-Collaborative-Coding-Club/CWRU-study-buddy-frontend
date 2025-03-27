@@ -3,11 +3,15 @@
  * Handles authentication, module data fetching, and messaging
  */
 
+import { getCookie } from "@/utils/cookies";
+
+
 // Base API URL
 const BASE_URL = "https://eaton1-api.xlab-cwru.com";
 
 // Define response types
 interface ModuleResponse {
+  response: any;
   id: string;
   title: string;
   system_prompt: string;
@@ -15,7 +19,7 @@ interface ModuleResponse {
     title: string;
     description: string;
     guidelines: string[];
-    keyTerms: {[key: string]: string};
+    keyTerms: { [key: string]: string };
   };
 }
 
@@ -39,7 +43,7 @@ export type ChatStatus = 'open' | 'in_progress' | 'completed';
 
 export interface ChatMessage {
   role: string; // 'system', 'user', or 'assistant'
-  content: string; 
+  content: string;
   on: string; // ISO timestamp
 }
 
@@ -88,7 +92,7 @@ interface ChatHistoryResponse {
 // API error handling with custom error class
 class ApiError extends Error {
   status: number;
-  
+
   constructor(message: string, status: number) {
     super(message);
     this.status = status;
@@ -101,9 +105,9 @@ export const ApiService = {
   // Get authentication token - check local storage first
   getAuthToken: (): string => {
     // In a production app, this would be integrated with an auth provider
-    return localStorage.getItem('token') || '';
+    return localStorage.getItem('token') || getCookie("token") || '';
   },
-  
+
   // Set authentication token
   setAuthToken: (token: string): void => {
     localStorage.setItem('token', token);
@@ -111,9 +115,11 @@ export const ApiService = {
 
   // Get current user information from token or localStorage
   getCurrentUser: (): User | null => {
+    if (typeof window === 'undefined') return null; // SSR guard
+
     const userJson = localStorage.getItem('currentUser');
     if (!userJson) return null;
-    
+
     try {
       return JSON.parse(userJson) as User;
     } catch (e) {
@@ -126,27 +132,27 @@ export const ApiService = {
   setCurrentUser: (user: User): void => {
     localStorage.setItem('currentUser', JSON.stringify(user));
   },
-  
+
   // Get headers with authentication
   getHeaders: (contentType: string = "application/json") => {
     const headers: Record<string, string> = {
       "Content-Type": contentType,
       "accept": "application/json",
     };
-    
+
     const token = ApiService.getAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    
+
     return headers;
   },
-  
+
   // Enhanced fetch with error handling
   fetchWithErrorHandling: async (url: string, options: RequestInit) => {
     try {
       const response = await fetch(url, options);
-      
+
       if (!response.ok) {
         // Handle different error codes appropriately
         switch (response.status) {
@@ -160,7 +166,7 @@ export const ApiService = {
             throw new ApiError(`API request failed with status: ${response.status}`, response.status);
         }
       }
-      
+
       return await response.json();
     } catch (error) {
       if (error instanceof ApiError) {
@@ -171,45 +177,44 @@ export const ApiService = {
       }
     }
   },
-  
+
   // Fetch module by ID
   fetchModuleById: async (moduleId: string, userId?: string): Promise<ModuleResponse> => {
+    var response = null;
     try {
       // Add userId as query param if available for personalization
-      const url = userId 
-        ? `${BASE_URL}/dev/module/${moduleId}?user_id=${userId}` 
-        : `${BASE_URL}/dev/module/${moduleId}`;
-        
-      return await ApiService.fetchWithErrorHandling(url, {
+      const url = `${BASE_URL}/prod/chat/message/${moduleId}`;
+
+      response = await ApiService.fetchWithErrorHandling(url, {
         method: "GET",
         headers: ApiService.getHeaders()
       });
     } catch (error) {
       console.error("Error fetching module:", error);
-      
-      // Provide fallback data if API fails
-      return {
-        id: moduleId,
-        title: "Customer Billing Issue",
-        system_prompt: "This is a customer support training scenario. The customer has a billing issue. Please assist them professionally.",
-        scenario_context: {
-          title: "Customer Billing Issue",
-          description: "Customer is confused about a $45 charge labeled 'Service Fee' on their recent invoice",
-          guidelines: [
-            "Use empathetic language",
-            "Offer clear explanations about billing policies",
-            "Provide options for resolving the issue"
-          ],
-          keyTerms: {
-            "Service Fee": "Monthly fee for premium technical support ($45/month)",
-            "Proration": "Partial billing for partial service period",
-            "Service tier": "Level of support customer has subscribed to"
-          }
-        }
-      };
     }
+    // Provide fallback data if API fails
+    return {
+      response: response,
+      id: moduleId,
+      title: "Customer Billing Issue",
+      system_prompt: "This is a customer support training scenario. The customer has a billing issue. Please assist them professionally.",
+      scenario_context: {
+        title: "Customer Billing Issue",
+        description: "Customer is confused about a $45 charge labeled 'Service Fee' on their recent invoice",
+        guidelines: [
+          "Use empathetic language",
+          "Offer clear explanations about billing policies",
+          "Provide options for resolving the issue"
+        ],
+        keyTerms: {
+          "Service Fee": "Monthly fee for premium technical support ($45/month)",
+          "Proration": "Partial billing for partial service period",
+          "Service tier": "Level of support customer has subscribed to"
+        }
+      }
+    };
   },
-  
+
   // Create a new chat session - Matches API documentation
   createChatSession: async (agentId: string): Promise<string> => {
     try {
@@ -218,14 +223,14 @@ export const ApiService = {
         headers: ApiService.getHeaders(),
         body: JSON.stringify({ agent_id: agentId })
       });
-      
+
       return data.chat_id;
     } catch (error) {
       console.error('Error creating chat session:', error);
       throw error;
     }
   },
-  
+
   // Send message to a chat - Follows API documentation
   sendMessage: async (message: string, chatId: string): Promise<SendMessageResponse> => {
     try {
@@ -242,7 +247,7 @@ export const ApiService = {
       throw error;
     }
   },
-  
+
   // Get chat history for a specific agent - Follows API documentation
   getChatHistory: async (agentId: string): Promise<ChatHistoryResponse> => {
     try {
@@ -255,22 +260,22 @@ export const ApiService = {
       throw error;
     }
   },
-  
+
   // Fetch training resources
   fetchTrainingResources: async (moduleId: string, userId?: string): Promise<TrainingResource[]> => {
     try {
       // Add userId as query param if available for personalization
-      const url = userId 
+      const url = userId
         ? `${BASE_URL}/dev/resources/${moduleId}?user_id=${userId}`
         : `${BASE_URL}/dev/resources/${moduleId}`;
-        
+
       return await ApiService.fetchWithErrorHandling(url, {
         method: 'GET',
         headers: ApiService.getHeaders()
       });
     } catch (error) {
       console.error("Error fetching training resources:", error);
-      
+
       // Fallback to mock data if API fails
       return [
         { id: "1", title: "Billing Policy Guide", url: "/resources/billing-guide.pdf" },
@@ -279,7 +284,7 @@ export const ApiService = {
       ];
     }
   },
-  
+
   // Track user progress in a training module
   // Using chatId as param name to match API expectations per documentation
   trackProgress: async (userId: string, moduleId: string, chatId: string, score: number): Promise<void> => {
@@ -296,7 +301,7 @@ export const ApiService = {
       });
     } catch (error) {
       console.error("Error tracking progress:", error);
-      
+
       // Don't throw for non-critical operation
       if ((error as ApiError).status === 401) {
         throw error; // Re-throw auth errors as they need handling
@@ -304,7 +309,7 @@ export const ApiService = {
       // Silently handle other errors for this non-critical operation
     }
   },
-  
+
   // Get user progress across all training modules
   getUserProgress: async (userId: string): Promise<any> => {
     try {
@@ -314,7 +319,7 @@ export const ApiService = {
       });
     } catch (error) {
       console.error("Error getting user progress:", error);
-      
+
       // Fallback to mock data if API fails
       return {
         total_modules: 5,
@@ -339,17 +344,17 @@ export const ApiService = {
       };
     }
   },
-  
+
   // Get an existing chat session by using chat history
   getChatSession: async (agentId: string, userId: string): Promise<ChatSession> => {
     try {
       // Try to get chat history
       const history = await ApiService.getChatHistory(agentId);
-      
+
       if (history && history.data && history.data.chat_id) {
         // Construct a chat session from history
         const messages = history.data.messages;
-        
+
         return {
           agent_id: agentId,
           user_id: userId,
@@ -366,10 +371,10 @@ export const ApiService = {
           }
         };
       }
-      
+
       // If no history found, create a new chat session
       const chatId = await ApiService.createChatSession(agentId);
-      
+
       // Return a minimal session structure for the new session
       return {
         agent_id: agentId,
@@ -388,11 +393,11 @@ export const ApiService = {
       };
     } catch (error) {
       console.error('Error getting or creating chat session:', error);
-      
+
       // Create a new session as fallback
       try {
         const chatId = await ApiService.createChatSession(agentId);
-        
+
         return {
           agent_id: agentId,
           user_id: userId,
@@ -414,7 +419,7 @@ export const ApiService = {
       }
     }
   },
-  
+
   // Helper method to simulate completing a chat session
   // Note: This isn't in the API documentation, but needed for app functionality
   completeChatSession: async (
@@ -426,7 +431,7 @@ export const ApiService = {
     try {
       // Get current session state
       const session = await ApiService.getChatSession(agentId, userId);
-      
+
       // Update session locally (since API doesn't have this endpoint)
       if (session && session.chat && session.chat[version]) {
         // Create updated session
@@ -442,7 +447,7 @@ export const ApiService = {
             }
           }
         };
-        
+
         // Track progress to backend
         await ApiService.trackProgress(
           userId,
@@ -450,10 +455,10 @@ export const ApiService = {
           session.chat_id,
           score
         );
-        
+
         return updatedSession;
       }
-      
+
       throw new Error('Invalid session state');
     } catch (error) {
       console.error('Error completing chat session:', error);
