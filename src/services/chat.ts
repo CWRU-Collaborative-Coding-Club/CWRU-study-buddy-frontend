@@ -12,10 +12,6 @@ const api = {
 
 export async function listChats(
   status?: string,
-  agent_id?: string,
-  user_id?: string,
-  start_date?: string,
-  end_date?: string,
   page: string = '1',
   page_size: string = '10'
 ): Promise<ChatListResponse> {
@@ -25,12 +21,8 @@ export async function listChats(
       method: "GET",
       params: {
         status,
-        agent_id,
-        user_id,
-        start_date,
-        end_date,
         page,
-        page_size
+        limit: page_size
       }
     });
     return response.data;
