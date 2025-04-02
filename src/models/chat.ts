@@ -14,23 +14,21 @@ export interface ChatVersion {
 }
 
 export interface Chat {
-  agent_id: string;
-  user_id: string;
-  chat_id: string;
   status: string;
   version: string | number;
-  startedAt: string;
-  closedAt?: string | null;
-  current_version: number;
-  chat?: ChatVersion[];
-  is_current: boolean;
+  started_at: string;
+  completed_at?: string | null;
+  messages: Message[];
+  chat_id: string;
+  score?: number | null;
+  agent_id: string;
 }
 
 export interface ChatListResponse {
-  chats: Chat[];
+  data: Chat[];
   page: number;
-  page_size: number;
-  total_count: number;
+  limit: number;
+  total: number;
 }
 
 export interface ChatDetailsResponse {

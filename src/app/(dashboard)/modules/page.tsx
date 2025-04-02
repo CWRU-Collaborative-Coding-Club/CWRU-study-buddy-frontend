@@ -1,5 +1,6 @@
 "use client";
 import {
+  createChatAPI,
   createModule,
   deleteModule,
   editModule,
@@ -27,6 +28,7 @@ import * as React from "react";
 import { useEffect } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { Module } from "../../../models/module";
+import { useRouter } from "next/navigation";
 
 // DataGrid component
 const CustomDataGrid: React.FC<{
@@ -47,7 +49,6 @@ const CustomDataGrid: React.FC<{
   loading,
   onPaginationModelChange,
 }) => {
-  
   return (
     <div style={{ height: "calc(100vh - 180px)", width: "100%" }}>
       <DataGrid
@@ -63,18 +64,18 @@ const CustomDataGrid: React.FC<{
         disableRowSelectionOnClick
         loading={loading}
         pagination
-        sx={{ 
+        sx={{
           borderRadius: 1,
-          '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "rgba(0, 0, 0, 0.04)",
           },
-          '& .MuiDataGrid-cell:focus': {
-            outline: 'none',
+          "& .MuiDataGrid-cell:focus": {
+            outline: "none",
           },
-          '& .MuiDataGrid-footerContainer': {
-            display: 'flex',
-            justifyContent: 'flex-end',
-          }
+          "& .MuiDataGrid-footerContainer": {
+            display: "flex",
+            justifyContent: "flex-end",
+          },
         }}
       />
     </div>
@@ -82,6 +83,7 @@ const CustomDataGrid: React.FC<{
 };
 
 export default function ModulesPage() {
+  const router = useRouter();
   // State
   const [rows, setRows] = React.useState<Module[]>([]);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -93,7 +95,8 @@ export default function ModulesPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [practiceOpen, setPracticeOpen] = React.useState(false);
-  const [selectedPracticeModule, setSelectedPracticeModule] = React.useState<Module | null>(null);
+  const [selectedPracticeModule, setSelectedPracticeModule] =
+    React.useState<Module | null>(null);
   const [searchValue, setSearchValue] = React.useState("");
   const [inputValue, setInputValue] = React.useState("");
   const [paginationModel, setPaginationModel] = React.useState({
@@ -109,7 +112,7 @@ export default function ModulesPage() {
   const fetchModules = React.useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Try to get modules with pagination
       let response;
       try {
@@ -123,15 +126,15 @@ export default function ModulesPage() {
         // If it fails, try without pagination as fallback
         response = await getModules();
       }
-      
+
       // Check if we have a valid response
       if (response && response.modules) {
         setRows(response.modules);
-        
+
         // Use total for rowCount in DataGrid pagination
-        if (typeof response.total === 'number') {
+        if (typeof response.total === "number") {
           setTotalModuleCount(response.total);
-        } else if (typeof response.total_count === 'number') {
+        } else if (typeof response.total_count === "number") {
           setTotalModuleCount(response.total_count);
         } else {
           // If no total provided, use the length of modules array
@@ -142,7 +145,7 @@ export default function ModulesPage() {
         setRows([]);
         setTotalModuleCount(0);
       }
-      
+
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -182,7 +185,7 @@ export default function ModulesPage() {
         title: moduleTitle,
         system_prompt: modulePrompt,
       });
-      
+
       // Refresh data from server
       await fetchModules();
       handleEditClose();
@@ -221,7 +224,7 @@ export default function ModulesPage() {
         title: moduleTitle,
         system_prompt: modulePrompt,
       });
-      
+
       // Refresh data from server
       await fetchModules();
       handleEditClose();
@@ -238,7 +241,7 @@ export default function ModulesPage() {
     pageSize: number;
   }) => {
     setPaginationModel(newModel);
-    
+
     // We don't need to manually call fetchModules here because
     // it will be triggered by the dependency in useEffect
   };
@@ -258,7 +261,7 @@ export default function ModulesPage() {
         page: 0,
       }));
     }, 500);
-    
+
     return () => clearTimeout(timeoutId);
   }, [inputValue]);
 
@@ -270,17 +273,17 @@ export default function ModulesPage() {
 
   // DataGrid columns
   const columns: GridColDef[] = [
-    { 
-      field: "agent_id", 
-      headerName: "ID", 
+    {
+      field: "agent_id",
+      headerName: "ID",
       flex: 1,
-      minWidth: 220 
+      minWidth: 220,
     },
-    { 
-      field: "name", 
-      headerName: "Title", 
+    {
+      field: "name",
+      headerName: "Title",
       flex: 2,
-      minWidth: 250 
+      minWidth: 250,
     },
     {
       field: "actions",
@@ -295,7 +298,7 @@ export default function ModulesPage() {
             variant="contained"
             color="primary"
             size="small"
-            sx={{ mr: 1, fontSize: '0.8125rem', py: 0.5 }}
+            sx={{ mr: 1, fontSize: "0.8125rem", py: 0.5 }}
           >
             Practice
           </Button>
@@ -319,15 +322,43 @@ export default function ModulesPage() {
     },
   ];
 
+  function createChat(selectedPracticeModule: Module | null) {
+    return async () => {
+      if (!selectedPracticeModule) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        var response = await createChatAPI({
+          agent_id: selectedPracticeModule.agent_id,
+        });
+        if (response && response.chat_id) {
+          router.push(`/chat?moduleId=${selectedPracticeModule.agent_id}`);
+        }
+      } catch (error: any) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+  }
+
   return (
-    <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: "calc(100vh - 80px)",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         <TextField
           variant="outlined"
           placeholder="Search modules by title..."
@@ -358,11 +389,11 @@ export default function ModulesPage() {
           </Button>
         )}
       </Box>
-      
-      <Box sx={{ position: 'relative', flexGrow: 1 }}>
-        <CustomDataGrid 
+
+      <Box sx={{ position: "relative", flexGrow: 1 }}>
+        <CustomDataGrid
           rows={rows}
-          columns={columns} 
+          columns={columns}
           paginationModel={paginationModel}
           rowCount={totalModuleCount}
           loading={loading}
@@ -409,43 +440,45 @@ export default function ModulesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog 
-        open={practiceOpen} 
+      <Dialog
+        open={practiceOpen}
         onClose={() => setPracticeOpen(false)}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle>Practice Module</DialogTitle>
         <DialogContent dividers>
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             gutterBottom
             sx={{
-              wordWrap: 'break-word',
-              overflowWrap: 'break-word',
-              wordBreak: 'break-word',
-              width: '100%',
-              maxWidth: '100%',
-              whiteSpace: 'normal'
+              wordWrap: "break-word",
+              overflowWrap: "break-word",
+              wordBreak: "break-word",
+              width: "100%",
+              maxWidth: "100%",
+              whiteSpace: "normal",
             }}
           >
             {selectedPracticeModule?.name}
           </Typography>
-          <Box sx={{ 
-            maxHeight: '60vh', 
-            overflow: 'auto', 
-            border: '1px solid #e0e0e0', 
-            borderRadius: 1, 
-            p: 2,
-            overflowX: 'hidden',
-            overflowY: 'auto'
-          }}>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                overflowWrap: 'break-word'
+          <Box
+            sx={{
+              maxHeight: "60vh",
+              overflow: "auto",
+              border: "1px solid #e0e0e0",
+              borderRadius: 1,
+              p: 2,
+              overflowX: "hidden",
+              overflowY: "auto",
+            }}
+          >
+            <Typography
+              variant="body1"
+              sx={{
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
               }}
             >
               {selectedPracticeModule?.system_prompt}
@@ -457,9 +490,7 @@ export default function ModulesPage() {
             Cancel
           </Button>
           <Button
-            onClick={() => {
-              window.location.href = `/chat?moduleName=${encodeURIComponent(selectedPracticeModule?.name || '')}&modulePrompt=${encodeURIComponent(selectedPracticeModule?.system_prompt || '')}`;
-            }}
+            onClick={createChat(selectedPracticeModule as Module | null)}
             variant="contained"
             color="primary"
           >
