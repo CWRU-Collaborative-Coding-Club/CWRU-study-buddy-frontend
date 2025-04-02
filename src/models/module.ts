@@ -1,5 +1,5 @@
 export interface Module {
-  chat_id: Module;
+  chat_id: string;
   name: string;
   agent_id: string;
   modified_by: string;
