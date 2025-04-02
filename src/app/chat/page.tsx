@@ -219,7 +219,7 @@ const ChatTrainingPage = () => {
                 <Paper
                   sx={{
                     p: 2,
-                    maxWidth: "60%",
+                    maxWidth: "100%",
                     display: "flex",
                     alignItems: "center",
                     borderRadius: 2,

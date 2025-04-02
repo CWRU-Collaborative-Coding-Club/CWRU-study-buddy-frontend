@@ -1,8 +1,10 @@
 import { getCookie } from "@/utils/cookies";
 import client from "../../lib/http/request";
 
+///Api paths
+const path = "chat";
 
-const API_URL = `https://eaton1-api.xlab-cwru.com/dev/chat`;
+const API_URL = `${path}`;
 
 const api = {
   message: `${API_URL}/message`, // GET & POST
