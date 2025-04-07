@@ -5,8 +5,8 @@ import { ChatListResponse, ChatDetailsResponse, ChatStatusUpdate, MessageAdd } f
 const path = "chat";
 
 const api = {
-  listChats: `/${path}/list`,
-  getChat: `/${path}`, // Will append chat_id in function
+  listChats: `/chat-history/list`,
+  getChat: `/chat/message`, // Will append chat_id in function
   updateStatus: `/${path}/status`
 };
 

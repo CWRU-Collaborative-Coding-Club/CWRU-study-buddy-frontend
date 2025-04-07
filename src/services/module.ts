@@ -12,6 +12,10 @@ const prefix = "module";
 const api = {
   listApi: `/${prefix}/list`,
   createApi: `/${prefix}/create`,
+  deleteApi: (moduleId: string) => `/${prefix}/${moduleId}`,
+  editApi: (moduleId: string) => `/${prefix}/${moduleId}`,
+  titleApi: (moduleId: string) => `/${prefix}/${moduleId}/title`,
+  pdfApi: (moduleId: string) => `/${prefix}/${moduleId}/pdf`,
   createChatApi: `/chat/create`,
 };
 
@@ -76,12 +80,20 @@ export async function getModules(
   }
 }
 
+interface CreateModuleReturn {
+  message: string;
+  module: Module;
+}
+
 // Create a new module
-export async function createModule(data: CreateModuleRequest): Promise<Module> {
+export async function createModule(data: CreateModuleRequest | FormData): Promise<CreateModuleReturn> {
+  const isFormData = data instanceof FormData;
+  
   const response = await client({
     url: api.createApi,
-    method: "post",
-    data,
+    method: "POST",
+    data
+    // Don't manually set Content-Type for FormData - let Axios handle it
   });
 
   return response.data;
@@ -89,11 +101,9 @@ export async function createModule(data: CreateModuleRequest): Promise<Module> {
 
 // Delete a module
 export async function deleteModule(moduleId: string): Promise<any> {
-  const deleteUrl = `${prefix}/${moduleId}`;
-
   try {
     const response = await client({
-      url: deleteUrl,
+      url: api.deleteApi(moduleId),
       method: "DELETE",
     });
     return response.data;
@@ -117,15 +127,14 @@ export async function createChatAPI(data: CreateChatRequest): Promise<Module> {
 // Edit an existing module
 export async function editModule(
   moduleId: string,
-  data: EditModuleRequest
+  data: EditModuleRequest | FormData
 ): Promise<Module> {
-  const editURL = `${prefix}/${moduleId}`;
-
   try {
     const response = await client({
-      url: editURL,
+      url: api.editApi(moduleId),
       method: "PUT",
-      data,
+      data
+      // Don't manually set Content-Type for FormData - let Axios handle it
     });
     return response.data;
   } catch (error) {
@@ -134,16 +143,39 @@ export async function editModule(
   }
 }
 
-// Add to src/services/module.ts
-export async function getModuleTitle(agentId: string): Promise<string> {
+export async function getModuleTitle(moduleId: string): Promise<string> {
   try {
     const response = await client({
-      url: `/module/${agentId}/title`,
+      url: api.titleApi(moduleId),
       method: "GET"
     });
     return response.data.title;
   } catch (error) {
-    console.error(`Error fetching title for module ${agentId}:`, error);
-    return agentId; // Fallback to showing the ID if we can't get the title
+    console.error(`Error fetching title for module ${moduleId}:`, error);
+    return moduleId; // Fallback to showing the ID if we can't get the title
+  }
+}
+
+// Upload PDF file for a module
+export async function uploadModulePdf(moduleId: string, pdfFile: File): Promise<{ message: string }> {
+  // Create FormData to handle file upload
+  const formData = new FormData();
+  formData.append('pdf_file', pdfFile);
+  
+  try {
+    console.log(`Uploading PDF to module ${moduleId}`);
+    
+    // Use the consistent endpoint format
+    const response = await client({
+      url: api.pdfApi(moduleId),
+      method: "POST",
+      data: formData
+    });
+    
+    console.log("PDF upload response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading PDF for module:", error);
+    throw error;
   }
 }

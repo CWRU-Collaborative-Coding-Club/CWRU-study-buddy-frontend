@@ -5,12 +5,15 @@ import {
   deleteModule,
   editModule,
   getModules,
+  uploadModulePdf,
 } from "@/services/module";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SearchIcon from "@mui/icons-material/Search";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import CloseIcon from '@mui/icons-material/Close';
 import {
   Alert,
   Box,
@@ -22,12 +25,13 @@ import {
   InputAdornment,
   TextField,
   Typography,
+  IconButton,
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
 import * as React from "react";
 import { useEffect } from "react";
 import { useAuth } from "../../../hooks/useAuth";
-import { Module } from "../../../models/module";
+import { Module, CreateModuleRequest, EditModuleRequest } from "../../../models/module";
 import { useRouter } from "next/navigation";
 
 // DataGrid component
@@ -99,11 +103,16 @@ export default function ModulesPage() {
     React.useState<Module | null>(null);
   const [searchValue, setSearchValue] = React.useState("");
   const [inputValue, setInputValue] = React.useState("");
+
+  const [pdfFile, setPdfFile] = React.useState<File | null>(null);
+  const [pdfFileName, setPdfFileName] = React.useState("");
+  const [isSaved, setIsSaved] = React.useState(false);
   const [paginationModel, setPaginationModel] = React.useState({
     page: 0,
     pageSize: 10,
   });
   const [totalModuleCount, setTotalModuleCount] = React.useState(0);
+  const [criteria, setCriteria] = React.useState<string[]>([""]);  // Initialize with one empty criterion
 
   // Use auth hook instead of manual token decoding
   const { accessLevel, isManager } = useAuth();
@@ -165,32 +174,164 @@ export default function ModulesPage() {
     setSelectedModule(module);
     setModuleTitle(module.name);
     setModulePrompt(module.system_prompt);
+    
+    // Make sure criteria is properly initialized when editing
+    if (module.criteria && module.criteria.length > 0) {
+      setCriteria(module.criteria);
+    } else {
+      // If no criteria exists, initialize with one empty criterion
+      setCriteria([""]);
+    }
+    
     setEditOpen(true);
+
+    if(!isSaved) {
+      setPdfFile(null);     
+      setPdfFileName(""); 
+      resetFileInput();
+    }
+
+    setIsSaved(false);
+  };
+
+
+  // Save button handler
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Perform save logic (e.g., update or create module)
+      if (selectedModule) {
+        await handleUpdateModule();
+      } else {
+        await handleAddModule();
+      }
+
+      // Mark the module as saved
+      setIsSaved(true);
+
+      // Close the dialog
+      handleEditClose();
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError(String(error));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Dialog close handler
   const handleEditClose = () => {
     setEditOpen(false);
+    setPdfFile(null);
+    setPdfFileName("");
+    // Do not reset criteria here as it would clear the fields when closing dialog
+  };
+
+  const handleRemoveFile = () => {
+    setPdfFile(null); 
+    setPdfFileName("");
+    resetFileInput();
+  }
+
+  const resetFileInput = () => {
+    const fileInput = document.getElementById('pdf-file-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
   // Update module handler
   const handleUpdateModule = async () => {
     if (!selectedModule) return;
+    if (!moduleTitle || !modulePrompt) return;
+
+    // Filter out empty criteria
+    const filteredCriteria = criteria.filter(c => c.trim() !== "");
+    
+    // Ensure at least one criterion exists
+    if (filteredCriteria.length === 0) {
+      setError("At least one non-empty criterion is required");
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      await editModule(selectedModule.agent_id, {
+      // First update the basic module info without PDF
+      const basicData: EditModuleRequest = {
         title: moduleTitle,
         system_prompt: modulePrompt,
-      });
-
+        criteria: filteredCriteria  // Include criteria in the update
+      };
+      
+      // Step 1: Update the basic module information
+      await editModule(selectedModule.agent_id, basicData);
+      
+      // Step 2: If PDF selected, upload it separately
+      if (pdfFile) {
+        await uploadModulePdf(selectedModule.agent_id, pdfFile);
+      }
+      
       // Refresh data from server
       await fetchModules();
       handleEditClose();
+      // Reset PDF state
+      setPdfFile(null);
+      setPdfFileName("");
     } catch (error: any) {
       setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add module handler
+  const handleAddModule = async () => {
+    if (!moduleTitle || !modulePrompt) {
+      setError("Title and system prompt are required");
+      return;
+    }
+
+    // Filter out empty criteria
+    const filteredCriteria = criteria.filter(c => c.trim() !== "");
+    
+    // Ensure at least one criterion exists
+    if (filteredCriteria.length === 0) {
+      setError("At least one non-empty criterion is required");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Create module with FormData
+      const newModule = await createModule({
+        title: moduleTitle,
+        system_prompt: modulePrompt,
+        criteria: filteredCriteria,  // Use filtered criteria
+      } as CreateModuleRequest);
+      
+      // Step 2: If PDF selected, upload it separately
+      if (pdfFile && newModule && newModule.module.agent_id) {
+        await uploadModulePdf(newModule.module.agent_id, pdfFile);
+      }
+      
+      // Refresh data from server
+      await fetchModules();
+      handleEditClose();
+      // Reset PDF state
+      setPdfFile(null);
+      setPdfFileName("");
+    } catch (error: any) {
+      setError(error.message);
+      console.error("Detailed error:", error);
     } finally {
       setLoading(false);
     }
@@ -207,27 +348,6 @@ export default function ModulesPage() {
       await deleteModule(id);
       // Refresh data from server
       await fetchModules();
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Add module handler
-  const handleAddModule = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await createModule({
-        title: moduleTitle,
-        system_prompt: modulePrompt,
-      });
-
-      // Refresh data from server
-      await fetchModules();
-      handleEditClose();
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -269,6 +389,76 @@ export default function ModulesPage() {
   const handlePracticeModule = (module: Module) => {
     setSelectedPracticeModule(module);
     setPracticeOpen(true);
+  };
+
+  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        setError('Please upload only PDF files');
+        return;
+      }
+      
+      // Validate file size (optional, example limit: 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size should be less than 10MB');
+        return;
+      }
+
+      setPdfFile(file);
+      setPdfFileName(file.name);
+      setError(null);
+    }
+  };
+
+  // Add a new criterion at a specific index
+  const handleAddCriterion = (index: number) => {
+    const updatedCriteria = [...criteria];
+    updatedCriteria.splice(index + 1, 0, ""); // Insert a new empty criterion after the current index
+    setCriteria(updatedCriteria);
+    
+    // Schedule scrolling after the component renders with the new criterion
+    setTimeout(() => {
+      const criteriaContainer = document.getElementById('criteria-container');
+      const newCriterionElement = document.getElementById(`criterion-${index + 1}`);
+      
+      if (criteriaContainer && newCriterionElement) {
+        criteriaContainer.scrollTo({
+          top: newCriterionElement.offsetTop,
+          behavior: 'smooth'
+        });
+      }
+    }, 100); // Small delay to ensure the DOM has updated
+  };
+
+  // Remove a criterion at a specific index
+  const handleRemoveCriterion = (index: number) => {
+    if (criteria.length > 1) {
+      const updatedCriteria = [...criteria];
+      updatedCriteria.splice(index, 1); // Remove the criterion at the specified index
+      setCriteria(updatedCriteria);
+    }
+  };
+
+  // Update a specific criterion
+  const handleCriterionChange = (index: number, value: string) => {
+    const updatedCriteria = [...criteria];
+    updatedCriteria[index] = value;
+    setCriteria(updatedCriteria);
+  };
+
+  // Reset criteria to default when opening new module dialog
+  const handleOpenAddModule = () => {
+    setSelectedModule(null);
+    setModuleTitle("");
+    setModulePrompt("");
+    // Initialize with one empty criterion
+    setCriteria([""]);
+    setEditOpen(true);
+    setPdfFile(null);     
+    setPdfFileName(""); 
+    resetFileInput();
   };
 
   // DataGrid columns
@@ -378,18 +568,12 @@ export default function ModulesPage() {
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}
-            onClick={() => {
-              setSelectedModule(null);
-              setModuleTitle("");
-              setModulePrompt("");
-              setEditOpen(true);
-            }}
+            onClick={handleOpenAddModule}
           >
             Add Module
           </Button>
         )}
       </Box>
-
       <Box sx={{ position: "relative", flexGrow: 1 }}>
         <CustomDataGrid
           rows={rows}
@@ -400,7 +584,6 @@ export default function ModulesPage() {
           onPaginationModelChange={handlePaginationModelChange}
         />
       </Box>
-
       <Dialog open={editOpen} onClose={handleEditClose} maxWidth="md" fullWidth>
         <DialogTitle>
           {selectedModule ? "Edit Module" : "Add Module"}
@@ -425,6 +608,106 @@ export default function ModulesPage() {
             value={modulePrompt}
             onChange={(e) => setModulePrompt(e.target.value)}
           />
+          
+          {/* PDF File Upload Section */}
+          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <input
+              accept=".pdf"
+              style={{ display: 'none' }}
+              id="pdf-file-input"
+              type="file"
+              onChange={handlePdfFileChange}
+            />
+            <label htmlFor="pdf-file-input">
+              <Button
+                variant="outlined"
+                component="span"
+                startIcon={<UploadFileIcon />}
+              >
+                Upload PDF
+              </Button>
+            </label>
+            {pdfFileName && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="textSecondary">
+                  Selected: {pdfFileName}
+                </Typography>
+                <IconButton 
+                  size="small" 
+                  onClick={handleRemoveFile}
+                  aria-label="remove pdf"
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
+          
+          {/* Criteria Section - Enhanced with proper styling */}
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Criteria
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Please add at least one criterion for evaluation.
+            </Typography>
+            <Box 
+              id="criteria-container" 
+              sx={{ 
+                maxHeight: '200px', 
+                overflowY: 'auto', 
+                border: '1px solid #e0e0e0', 
+                borderRadius: 1,
+                p: 1,
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: '#bdbdbd',
+                  borderRadius: '4px',
+                },
+              }}
+            >
+              {criteria.map((criterion, index) => (
+                <Box 
+                  key={index}
+                  id={`criterion-${index}`}
+                  sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    mb: 1.5,
+                    '&:last-child': {
+                      mb: 0.5
+                    }
+                  }}
+                >
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={criterion}
+                    onChange={(e) => handleCriterionChange(index, e.target.value)}
+                    placeholder={`Criterion ${index + 1}`}
+                    sx={{ mr: 1 }}
+                  />
+                  <IconButton
+                    size="small"
+                    onClick={() => handleAddCriterion(index)}
+                    sx={{ mr: 0.5 }}
+                  >
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleRemoveCriterion(index)}
+                    disabled={criteria.length === 1} // Disable remove if there's only one criterion
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
           {error && <Typography color="error">{error}</Typography>}
         </DialogContent>
         <DialogActions>
@@ -432,16 +715,16 @@ export default function ModulesPage() {
             Cancel
           </Button>
           <Button
-            onClick={selectedModule ? handleUpdateModule : handleAddModule}
+            onClick={handleSave}
             color="primary"
             disabled={loading}
           >
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogActions>
-      </Dialog>
-      <Dialog
-        open={practiceOpen}
+      </Dialog>   
+      <Dialog 
+        open={practiceOpen} 
         onClose={() => setPracticeOpen(false)}
         maxWidth="md"
         fullWidth

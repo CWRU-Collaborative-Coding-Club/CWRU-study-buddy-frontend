@@ -1,6 +1,6 @@
 {
-  "name": "auth-nextjs-themed",
-  "version": "0.1.0",
+  "name": "eaton-call-center-frontend",
+  "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -31,12 +31,12 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/node": "^20.17.16",
-    "@types/react": "^19.0.8",
+    "@types/node": "20.17.30",
+    "@types/react": "19.0.12",
     "@types/react-dom": "^19.0.0",
     "eslint": "^8",
     "eslint-config-next": "^15",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "typescript": "5.8.2"
   }
 }

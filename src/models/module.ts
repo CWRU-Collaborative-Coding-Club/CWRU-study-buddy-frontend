@@ -1,5 +1,6 @@
 export interface Module {
-  chat_id: string;
+  chat_id:string,
+  criteria: never[];
   name: string;
   agent_id: string;
   modified_by: string;
@@ -13,6 +14,7 @@ export interface Module {
 export interface CreateModuleRequest {
   title: string;
   system_prompt: string;
+  pdf_file?: File,
 }
 
 export interface CreateChatRequest {
@@ -22,4 +24,6 @@ export interface CreateChatRequest {
 export interface EditModuleRequest {
   title?: string;
   system_prompt?: string;
+  pdf_file?: File;
+  criteria?: string[];
 }
