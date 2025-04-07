@@ -71,13 +71,13 @@ export default function ChatHistoryPage() {
       );
 
       // Filter client-side with search query
-      let filteredChats = response.data;
-
+      let filteredChats = response.chats;
+      
       if (searchQuery && searchQuery.trim() !== "") {
         console.log("Filtering with search:", searchQuery);
         const query_lower = searchQuery.toLowerCase();
 
-        filteredChats = response.data.filter((chat) => {
+        filteredChats = response.chats.filter((chat) => {
           // Get title from cache
           const title = moduleTitles[chat.agent_id] || "";
 
@@ -138,6 +138,7 @@ export default function ChatHistoryPage() {
 
   // Fetch module titles when chat list changes
   useEffect(() => {
+    if (!loading) {
     const agentIds = chats
       .map((chat) => chat.agent_id)
       .filter((id) => id && !moduleTitles[id]);
@@ -147,8 +148,9 @@ export default function ChatHistoryPage() {
 
     if (uniqueAgentIds.length > 0) {
       fetchModuleTitles(uniqueAgentIds);
+      }
     }
-  }, [chats, fetchModuleTitles, moduleTitles]);
+  }, [chats, fetchModuleTitles, moduleTitles, loading]);
 
   // Simplified handleSearchChange based on users page
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
