@@ -86,14 +86,25 @@ interface CreateModuleReturn {
 }
 
 // Create a new module
-export async function createModule(data: CreateModuleRequest | FormData): Promise<CreateModuleReturn> {
-  const isFormData = data instanceof FormData;
+export async function createModule(data: CreateModuleRequest, pdfFile?: File): Promise<CreateModuleReturn> {
+  const formData = new FormData();
+  
+  // Append module data directly to formData
+  formData.append('title', data.title);
+  formData.append('system_prompt', data.system_prompt);
+  if (data.criteria) {
+    formData.append('criteria', JSON.stringify(data.criteria));
+  }
+  
+  // Append PDF file if provided
+  if (pdfFile) {
+    formData.append('pdf_file', pdfFile);
+  }
   
   const response = await client({
     url: api.createApi,
     method: "POST",
-    data
-    // Don't manually set Content-Type for FormData - let Axios handle it
+    data: formData
   });
 
   return response.data;
@@ -127,14 +138,26 @@ export async function createChatAPI(data: CreateChatRequest): Promise<Module> {
 // Edit an existing module
 export async function editModule(
   moduleId: string,
-  data: EditModuleRequest | FormData
+  data: EditModuleRequest,
+  pdfFile?: File
 ): Promise<Module> {
   try {
+    const formData = new FormData();
+    
+    // Append module data directly to formData
+    if (data.title) formData.append('title', data.title);
+    if (data.system_prompt) formData.append('system_prompt', data.system_prompt);
+    if (data.criteria) formData.append('criteria', JSON.stringify(data.criteria));
+    
+    // Append PDF file if provided
+    if (pdfFile) {
+      formData.append('pdf_file', pdfFile);
+    }
+    
     const response = await client({
       url: api.editApi(moduleId),
       method: "PUT",
-      data
-      // Don't manually set Content-Type for FormData - let Axios handle it
+      data: formData
     });
     return response.data;
   } catch (error) {

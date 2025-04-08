@@ -14,6 +14,7 @@ export interface Module {
 export interface CreateModuleRequest {
   title: string;
   system_prompt: string;
+  criteria?: string[];
   pdf_file?: File,
 }
 

@@ -263,20 +263,14 @@ export default function ModulesPage() {
     setError(null);
 
     try {
-      // First update the basic module info without PDF
       const basicData: EditModuleRequest = {
         title: moduleTitle,
         system_prompt: modulePrompt,
-        criteria: filteredCriteria  // Include criteria in the update
+        criteria: filteredCriteria
       };
       
-      // Step 1: Update the basic module information
-      await editModule(selectedModule.agent_id, basicData);
-      
-      // Step 2: If PDF selected, upload it separately
-      if (pdfFile) {
-        await uploadModulePdf(selectedModule.agent_id, pdfFile);
-      }
+      // Single request to update module with optional PDF
+      await editModule(selectedModule.agent_id, basicData, pdfFile || undefined);
       
       // Refresh data from server
       await fetchModules();
@@ -311,17 +305,12 @@ export default function ModulesPage() {
     setError(null);
 
     try {
-      // Create module with FormData
+      // Single request to create module with optional PDF
       const newModule = await createModule({
         title: moduleTitle,
         system_prompt: modulePrompt,
-        criteria: filteredCriteria,  // Use filtered criteria
-      } as CreateModuleRequest);
-      
-      // Step 2: If PDF selected, upload it separately
-      if (pdfFile && newModule && newModule.module.agent_id) {
-        await uploadModulePdf(newModule.module.agent_id, pdfFile);
-      }
+        criteria: filteredCriteria,
+      }, pdfFile || undefined);
       
       // Refresh data from server
       await fetchModules();

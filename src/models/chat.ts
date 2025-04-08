@@ -25,7 +25,7 @@ export interface Chat {
 }
 
 export interface ChatListResponse {
-  chats: Chat[];
+  data: Chat[];
   page: number;
   limit: number;
   total: number;

@@ -71,13 +71,13 @@ export default function ChatHistoryPage() {
       );
 
       // Filter client-side with search query
-      let filteredChats = response.chats;
+      let filteredChats = response.data;
       
       if (searchQuery && searchQuery.trim() !== "") {
         console.log("Filtering with search:", searchQuery);
         const query_lower = searchQuery.toLowerCase();
 
-        filteredChats = response.chats.filter((chat) => {
+        filteredChats = response.data.filter((chat) => {
           // Get title from cache
           const title = moduleTitles[chat.agent_id] || "";
 
