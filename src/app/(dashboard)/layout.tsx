@@ -13,6 +13,7 @@ export default function Layout(props: { children: React.ReactNode }) {
         toolbarAccount: ToolbarAccountOverride,
         sidebarFooter: SidebarFooterAccount,
       }}
+      sidebarExpandedWidth={230}
     >
       <PageContainer>
         {props.children}

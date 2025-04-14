@@ -17,6 +17,19 @@ interface DecodedToken {
   email: string;
   id: string;
   name: string;
+  user_id?: string;
+  access_level?: number;
+  exp?: number;
+  first_name?: string;
+  last_name?: string;
+}
+
+// Helper function to determine role based on access level
+function getUserRole(accessLevel: number | undefined): string {
+  if (accessLevel === 9) return 'Admin';
+  if (accessLevel && accessLevel >= 5) return 'Manager';
+  if (accessLevel && accessLevel >= 1) return 'Trainee';
+  return 'Guest';
 }
 
 function getCookie(name: string) {
@@ -35,15 +48,24 @@ let user = {
   email: "",
   id: "",
   name: "",
+  role: "Guest",
 };
 
 if (token) {
   try {
     const decodedToken = jwtDecode<DecodedToken>(token);
+    
+    // Determine the display name - check if we have both components or just a combined name
+    let displayName = decodedToken.name || '';
+    if (!displayName && (decodedToken.first_name || decodedToken.last_name)) {
+      displayName = `${decodedToken.first_name || ''} ${decodedToken.last_name || ''}`.trim();
+    }
+    
     user = {
       email: decodedToken.email,
-      id: decodedToken.id,
-      name: decodedToken.name,
+      id: decodedToken.id || decodedToken.user_id || '',
+      name: displayName,
+      role: getUserRole(decodedToken.access_level),
     };
   } catch (error) {
     console.error("Invalid token:", error);
@@ -93,10 +115,11 @@ const SESSION = {
     image:
       "https://www.google.com/url?sa=i&url=https%3A%2F%2Fpngtree.com%2Ffree-png-vectors%2Fuser-profile&psig=AOvVaw1N1zxnySa37enNtU9CcFCX&ust=1741322668203000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKiIi8zS9IsDFQAAAAAdAAAAABAQ",
     name: user.name,
+    role: user.role, // Add role information
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (

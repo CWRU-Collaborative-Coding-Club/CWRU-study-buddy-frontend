@@ -7,7 +7,6 @@ import AddIcon from "@mui/icons-material/Add";
 import Divider from "@mui/material/Divider";
 import {
   Account,
-  AccountPreview,
   AccountPreviewProps,
   AccountPopoverFooter,
   SignOutButton,
@@ -16,18 +15,35 @@ import { SidebarFooterProps } from "@toolpad/core/DashboardLayout";
 import { useEffect } from "react";
 import { getCookie } from "@/utils/cookies";
 import { SIGNIN_PATH } from "@/config/constants";
+import CustomAccountPreview from "./CustomAccountPreview";
 
 function AccountSidebarPreview(props: AccountPreviewProps & { mini: boolean }) {
   const { handleClick, open, mini } = props;
   return (
     <Stack direction="column" p={0} overflow="hidden">
       <Divider />
-      <AccountPreview
-        variant={mini ? "condensed" : "expanded"}
-        slotProps={{ avatarIconButton: { sx: mini ? { border: "0" } : {} } }}
-        handleClick={handleClick}
-        open={open}
-      />
+      {mini ? (
+        // Use original behavior for mini mode
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.5}
+          sx={{ width: "100%", px: 1, py: 0.5 }}
+        >
+          <CustomAccountPreview
+            variant="condensed"
+            handleClick={handleClick}
+            open={open}
+          />
+        </Stack>
+      ) : (
+        // Use our custom component for regular mode
+        <CustomAccountPreview
+          variant="expanded"
+          handleClick={handleClick}
+          open={open}
+        />
+      )}
     </Stack>
   );
 }
@@ -35,7 +51,7 @@ function AccountSidebarPreview(props: AccountPreviewProps & { mini: boolean }) {
 function SidebarFooterAccountPopover({ mini }: { mini: boolean }) {
   return (
     <Stack direction="column">
-      {mini ? <AccountPreview variant="expanded" /> : null}
+      {mini ? <CustomAccountPreview variant="expanded" /> : null}
       <MenuList>
         <Button
           variant="text"
