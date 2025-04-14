@@ -61,8 +61,6 @@ export default function ChatHistoryPage() {
   const fetchChats = useCallback(async () => {
     setLoading(true);
     try {
-      console.log("Fetching chats with status filter:", statusFilter);
-
       // Always fetch from server with status filter only, no text search on backend
       const response = await listChats(
         statusFilter !== "all" ? statusFilter : undefined,
@@ -74,7 +72,6 @@ export default function ChatHistoryPage() {
       let filteredChats = response.data;
       
       if (searchQuery && searchQuery.trim() !== "") {
-        console.log("Filtering with search:", searchQuery);
         const query_lower = searchQuery.toLowerCase();
 
         filteredChats = response.data.filter((chat) => {
@@ -89,8 +86,6 @@ export default function ChatHistoryPage() {
 
           return matchesAgentId || matchesTitle;
         });
-
-        console.log("After filtering:", filteredChats.length, "chats");
       }
 
       setChats(filteredChats);
@@ -162,7 +157,6 @@ export default function ChatHistoryPage() {
     }
 
     searchTimeout.current = setTimeout(() => {
-      console.log("Search triggered with:", query);
       // Just trigger a re-fetch with the new search term
       // The fetchChats function will handle the client-side filtering
       setPage(1); // Reset to first page on search
@@ -212,6 +206,20 @@ export default function ChatHistoryPage() {
     } catch (error) {
       console.error("Error closing chat:", error);
       setError("Failed to close chat. Please try again.");
+    }
+  };
+
+  // Reopen chat action
+  const handleReopenChat = async (chat: Chat) => {
+    try {
+      await updateChatStatus({
+        chat_id: chat.chat_id,
+        status: "in_progress",
+      });
+      fetchChats(); // Refresh the list
+    } catch (error) {
+      console.error("Error reopening chat:", error);
+      setError("Failed to reopen chat. Please try again.");
     }
   };
 
@@ -296,11 +304,6 @@ export default function ChatHistoryPage() {
             bgColor: alpha(theme.palette.warning.main, 0.1),
             label: "In Progress",
           },
-          reopened: {
-            color: theme.palette.info.main,
-            bgColor: alpha(theme.palette.info.main, 0.1),
-            label: "Reopened",
-          },
         };
 
         const config = statusConfig[status] || {
@@ -351,7 +354,16 @@ export default function ChatHistoryPage() {
             >
               View
             </Button>
-            {!isClosed && (
+            {isClosed ? (
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={() => handleReopenChat(params.row)}
+              >
+                Reopen
+              </Button>
+            ) : (
               <>
                 <Button
                   startIcon={<PlayArrowIcon />}

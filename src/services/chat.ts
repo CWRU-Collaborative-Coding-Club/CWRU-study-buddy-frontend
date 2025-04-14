@@ -5,9 +5,9 @@ import { ChatListResponse, ChatDetailsResponse, ChatStatusUpdate, MessageAdd } f
 const path = "chat";
 
 const api = {
-  listChats: `/chat/list`,
-  getChat: `/chat/message`, // Will append chat_id in function
-  updateStatus: `/${path}/status`
+  listChats: `/${path}/list`,
+  getChat: `/${path}/message`, // Will append chat_id in function
+  updateStatus: `/${path}/status` // Will append chat_id in function
 };
 
 export async function listChats(
@@ -49,9 +49,11 @@ export async function getChatDetail(chatId: string, version?: string): Promise<C
 export async function updateChatStatus(data: ChatStatusUpdate): Promise<{ message: string; chat_id: string }> {
   try {
     const response = await client({
-      url: api.updateStatus,
+      url: `${api.updateStatus}/${data.chat_id}`,
       method: "PUT",
-      data
+      data: { 
+        chat_id: data.chat_id,
+        status: data.status }
     });
     return response.data;
   } catch (error) {
