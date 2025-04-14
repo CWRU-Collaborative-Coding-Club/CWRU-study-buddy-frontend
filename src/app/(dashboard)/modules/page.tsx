@@ -3,9 +3,10 @@ import {
   createChatAPI,
   createModule,
   deleteModule,
+  deleteModuleResource,
   editModule,
   getModules,
-  uploadModulePdf,
+  getModuleResources,
 } from "@/services/module";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -113,6 +114,8 @@ export default function ModulesPage() {
   });
   const [totalModuleCount, setTotalModuleCount] = React.useState(0);
   const [criteria, setCriteria] = React.useState<string[]>([""]);  // Initialize with one empty criterion
+  const [existingPdfName, setExistingPdfName] = React.useState<string | null>(null);
+  const [pdfResourceId, setPdfResourceId] = React.useState<string | null>(null);
 
   // Use auth hook instead of manual token decoding
   const { accessLevel, isManager } = useAuth();
@@ -170,7 +173,7 @@ export default function ModulesPage() {
   }, [fetchModules]);
 
   // Edit module handler
-  const handleEditModule = (module: Module) => {
+  const handleEditModule = async (module: Module) => {
     setSelectedModule(module);
     setModuleTitle(module.name);
     setModulePrompt(module.system_prompt);
@@ -183,6 +186,30 @@ export default function ModulesPage() {
       setCriteria([""]);
     }
     
+    // Check if module has a PDF file attached and set the resource ID if available
+    if (module.has_pdf) {
+      try {
+        // Fetch the module resources to get the actual PDF filename
+        const resourcesData = await getModuleResources(module.agent_id);
+
+        // Find any resources with original_filename
+        const pdfResource = resourcesData.resources.find(r => r.original_filename);
+                
+        if (pdfResource) {
+          setPdfResourceId(pdfResource.resource_id);
+          setExistingPdfName(pdfResource.original_filename);
+        } else {
+          setExistingPdfName("PDF Attached"); // Fallback if we can't get the filename
+        }
+      } catch (error) {
+        console.error("Error fetching PDF filename:", error);
+        setExistingPdfName("PDF Attached"); // Fallback if API call fails
+      }
+    } else {
+      setExistingPdfName(null);
+      setPdfResourceId(null);
+    }
+    
     setEditOpen(true);
 
     if(!isSaved) {
@@ -193,7 +220,6 @@ export default function ModulesPage() {
 
     setIsSaved(false);
   };
-
 
   // Save button handler
   const handleSave = async () => {
@@ -229,7 +255,6 @@ export default function ModulesPage() {
     setEditOpen(false);
     setPdfFile(null);
     setPdfFileName("");
-    // Do not reset criteria here as it would clear the fields when closing dialog
   };
 
   const handleRemoveFile = () => {
@@ -263,10 +288,23 @@ export default function ModulesPage() {
     setError(null);
 
     try {
+      // Check if we need to delete the PDF
+      if (pdfFileName === "REMOVE_PDF" && selectedModule && pdfResourceId) {
+        try {
+          await deleteModuleResource(selectedModule.agent_id, pdfResourceId);
+        } catch (error: any) {
+          setError(`Failed to remove PDF: ${error.message}`);
+          setLoading(false);
+          return;
+        }
+      }
+      
       const basicData: EditModuleRequest = {
         title: moduleTitle,
         system_prompt: modulePrompt,
-        criteria: filteredCriteria
+        criteria: filteredCriteria,
+        // If we've explicitly marked to remove the PDF
+        keep_existing_pdf: existingPdfName !== null && pdfFileName !== "REMOVE_PDF"
       };
       
       // Single request to update module with optional PDF
@@ -278,6 +316,7 @@ export default function ModulesPage() {
       // Reset PDF state
       setPdfFile(null);
       setPdfFileName("");
+      setExistingPdfName(null);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -616,10 +655,30 @@ export default function ModulesPage() {
                 Upload PDF
               </Button>
             </label>
-            {pdfFileName && (
+            {/* Show existing PDF if one exists and no new one is selected */}
+            {existingPdfName && !pdfFile && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body2" color="textSecondary">
-                  Selected: {pdfFileName}
+                  {existingPdfName}
+                </Typography>
+                <IconButton 
+                  size="small" 
+                  onClick={() => {
+                    // Just mark for deletion - don't actually delete yet
+                    setExistingPdfName(null);
+                    setPdfFileName("REMOVE_PDF");
+                  }}
+                  aria-label="remove existing pdf"
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+            {/* Show newly selected PDF */}
+            {pdfFile && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="textSecondary">
+                  Selected: {pdfFile.name}
                 </Typography>
                 <IconButton 
                   size="small" 

@@ -5,6 +5,8 @@ import {
   CreateModuleRequest,
   EditModuleRequest,
   CreateChatRequest,
+  ResourceListResponse,
+  ModuleResource,
 } from "../models/module";
 
 const prefix = "module";
@@ -12,11 +14,13 @@ const prefix = "module";
 const api = {
   listApi: `/${prefix}/list`,
   createApi: `/${prefix}/create`,
+  createChatApi: `/chat/create`,
   deleteApi: (moduleId: string) => `/${prefix}/${moduleId}`,
   editApi: (moduleId: string) => `/${prefix}/${moduleId}`,
   titleApi: (moduleId: string) => `/${prefix}/${moduleId}/title`,
   pdfApi: (moduleId: string) => `/${prefix}/${moduleId}/pdf`,
-  createChatApi: `/chat/create`,
+  deleteResourceApi: (moduleId: string, resourceId: string) => `/${prefix}/${moduleId}/resource/${resourceId}`,
+  resourcesApi: (moduleId: string) => `/${prefix}/${moduleId}/resources`,
 };
 
 // Get modules with pagination and filtering
@@ -148,6 +152,9 @@ export async function editModule(
     if (data.title) formData.append('title', data.title);
     if (data.system_prompt) formData.append('system_prompt', data.system_prompt);
     if (data.criteria) formData.append('criteria', JSON.stringify(data.criteria));
+    if (data.keep_existing_pdf !== undefined) {
+      formData.append('keep_existing_pdf', String(data.keep_existing_pdf));
+    }
     
     // Append PDF file if provided
     if (pdfFile) {
@@ -195,10 +202,37 @@ export async function uploadModulePdf(moduleId: string, pdfFile: File): Promise<
       data: formData
     });
     
-    console.log("PDF upload response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error uploading PDF for module:", error);
+    throw error;
+  }
+}
+
+// Delete a resource from a module
+export async function deleteModuleResource(moduleId: string, resourceId: string): Promise<{ message: string }> {
+  try {
+    const response = await client({
+      url: api.deleteResourceApi(moduleId, resourceId),
+      method: "DELETE",
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting module resource:", error);
+    throw error;
+  }
+}
+
+// Get resources for a module
+export async function getModuleResources(moduleId: string): Promise<ResourceListResponse> {
+  try {
+    const response = await client({
+      url: api.resourcesApi(moduleId),
+      method: "GET"
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching resources for module ${moduleId}:`, error);
     throw error;
   }
 }
