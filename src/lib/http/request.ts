@@ -16,7 +16,7 @@ const httpsAgent = new https.Agent({
 
 // Set base URL based on environment
 if (process.env.NODE_ENV === "development") {
-  baseURL = 'http://localhost:8000'
+  baseURL = 'https://eaton1-api.xlab-cwru.com'
     // ? process.env.NEXT_PUBLIC_LOCAL_BASE_URL
     // : process.env.NEXT_PUBLIC_ONLINE_BASE_URL;
   environment = 'dev'//process.env.NEXT_PUBLIC_DEV_ENVIRONMENT;

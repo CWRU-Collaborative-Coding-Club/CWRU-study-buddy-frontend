@@ -327,7 +327,7 @@ export default function ModulesPage() {
   // Add module handler
   const handleAddModule = async () => {
     if (!moduleTitle || !modulePrompt) {
-      setError("Title and system prompt are required");
+      setError("Title and customer query are required");
       return;
     }
 
@@ -628,7 +628,7 @@ export default function ModulesPage() {
           />
           <TextField
             margin="dense"
-            label="System Prompt"
+            label="Beginning Customer Question/Concern"
             type="text"
             fullWidth
             multiline

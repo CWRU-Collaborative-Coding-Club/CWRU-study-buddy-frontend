@@ -71,9 +71,13 @@ export default function DashboardContent() {
           <Box sx={{ width: "100%", maxWidth: { sm: "100%", md: "1700px" } }}>
             {/* cards */}
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+              Profile
+            </Typography>
+            { /* placeholder for profile card */ }
+            <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Overview
             </Typography>
-            <Grid
+            {/* <Grid
               container
               spacing={2}
               columns={12}
@@ -93,18 +97,18 @@ export default function DashboardContent() {
               <Grid size={{ xs: 12, md: 6 }}>
                 <PageViewsBarChart />
               </Grid>
-            </Grid>
+            </Grid> */}
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Details
             </Typography>
-            <Grid container spacing={2} columns={12}>
+            {/* <Grid container spacing={2} columns={12}>
               <Grid size={{ xs: 12, lg: 6 }}>
                 <Stack gap={2} direction={{ xs: "column", sm: "row" }}>
                   <CustomTreeView />
                   <ChartUserByCountry />
                 </Stack>
               </Grid>
-            </Grid>
+            </Grid> */}
           </Box>
         </Stack>
       </Box>

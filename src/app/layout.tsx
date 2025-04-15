@@ -81,11 +81,11 @@ const NAVIGATION: Navigation = [
     title: "Dashboard",
     icon: <DashboardIcon />,
   },
-  {
-    segment: "orders",
-    title: "Orders",
-    icon: <ShoppingCartIcon />,
-  },
+  // {
+  //   segment: "orders",
+  //   title: "Orders",
+  //   icon: <ShoppingCartIcon />,
+  // },
   {
     segment: "users",
     title: "Users",

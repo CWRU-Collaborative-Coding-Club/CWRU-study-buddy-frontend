@@ -8,7 +8,7 @@ import { alpha } from "@mui/material/styles";
 
 interface DecodedToken {
   user_id?: string;
-  name: string;
+  user: string;
   access_level?: number;
 }
 
@@ -32,7 +32,7 @@ export default function CustomAccountPreview(props: AccountPreviewProps) {
         const decoded = jwtDecode<DecodedToken>(token);
 
         // Determine display name
-        let displayName = decoded.name || "";
+        let displayName = decoded.user || "";
         setUserName(displayName || "User");
 
         // Determine role based on access level
