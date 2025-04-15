@@ -11,6 +11,7 @@ import SessionsChart from "../components/SessionsChart";
 import PageViewsBarChart from "../components/PageViewsBarChart";
 import CustomTreeView from "../components/CustomTreeView";
 import ChartUserByCountry from "../components/ChartUserByCountry";
+import { analyticsService } from "@/services/analyticsService";
 
 const data: StatCardProps[] = [
   {
@@ -47,6 +48,23 @@ const data: StatCardProps[] = [
 ];
 
 export default function DashboardContent() {
+  const [analytics, setAnalytics] = React.useState<{
+    organization_analytics?: any;
+    user_analytics?: any;
+  }>({});
+
+  React.useEffect(() => {
+    async function getAnalytics() {
+      try {
+        const analyticsData = await analyticsService();
+        setAnalytics(analyticsData);
+        console.log("Analytics data:", analyticsData);
+      } catch (error) {
+        console.error("Error fetching analytics data:", error);
+      }
+    }
+    getAnalytics();
+  }, []);
   return (
     <Box sx={{ display: "flex" }}>
       <Box
@@ -73,7 +91,6 @@ export default function DashboardContent() {
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Profile
             </Typography>
-            { /* placeholder for profile card */ }
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Overview
             </Typography>
@@ -98,6 +115,158 @@ export default function DashboardContent() {
                 <PageViewsBarChart />
               </Grid>
             </Grid> */}
+            <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+              User Analytics
+            </Typography>
+            {analytics.user_analytics ? (
+              <Box sx={{ mb: 3 }}>
+                <Typography>
+                  Total Modules Attempted:{" "}
+                  {analytics.user_analytics.total_modules_attempted}
+                </Typography>
+                <Typography>
+                  Completed Modules:{" "}
+                  {analytics.user_analytics.completed_modules}
+                </Typography>
+                <Typography>
+                  In Progress Modules:{" "}
+                  {analytics.user_analytics.in_progress_modules}
+                </Typography>
+                <Typography>
+                  Unique Modules Engaged:{" "}
+                  {analytics.user_analytics.unique_modules_engaged}
+                </Typography>
+                <Typography>
+                  Avg. Completion Time (min):{" "}
+                  {analytics.user_analytics.avg_completion_time_minutes}
+                </Typography>
+                <Typography>
+                  Completion Rate (%):{" "}
+                  {analytics.user_analytics.completion_rate_percentage}
+                </Typography>
+                <Typography>
+                  Total Criteria: {analytics.user_analytics.total_criteria}
+                </Typography>
+                <Typography>
+                  Passed Criteria: {analytics.user_analytics.passed_criteria}
+                </Typography>
+                <Typography>
+                  Criteria Completion Rate (%):{" "}
+                  {analytics.user_analytics.criteria_completion_rate_percentage}
+                </Typography>
+              </Box>
+            ) : (
+              <Typography>No user analytics data available.</Typography>
+            )}
+
+            <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+              Organization Analytics
+            </Typography>
+            {analytics.organization_analytics ? (
+              <Box sx={{ mb: 3 }}>
+                <Typography>
+                  Total Modules Available:{" "}
+                  {analytics.organization_analytics.total_modules_available}
+                </Typography>
+                <Typography>
+                  Total Module Sessions:{" "}
+                  {analytics.organization_analytics.total_module_sessions}
+                </Typography>
+                <Typography>
+                  Completed Sessions:{" "}
+                  {analytics.organization_analytics.completed_sessions}
+                </Typography>
+                <Typography>
+                  In Progress Sessions:{" "}
+                  {analytics.organization_analytics.in_progress_sessions}
+                </Typography>
+                <Typography>
+                  Avg. Completion Time (min):{" "}
+                  {analytics.organization_analytics.avg_completion_time_minutes}
+                </Typography>
+                <Typography>
+                  Overall Completion Rate (%):{" "}
+                  {
+                    analytics.organization_analytics
+                      .overall_completion_rate_percentage
+                  }
+                </Typography>
+                <Typography>
+                  Total Active Users:{" "}
+                  {analytics.organization_analytics.total_active_users}
+                </Typography>
+                <Typography>
+                  Total Criteria Across Modules:{" "}
+                  {
+                    analytics.organization_analytics
+                      .total_criteria_across_modules
+                  }
+                </Typography>
+                <Typography>
+                  Passed Criteria Across Modules:{" "}
+                  {
+                    analytics.organization_analytics
+                      .passed_criteria_across_modules
+                  }
+                </Typography>
+                <Typography>
+                  Criteria Completion Rate (%):{" "}
+                  {
+                    analytics.organization_analytics
+                      .criteria_completion_rate_percentage
+                  }
+                </Typography>
+                <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+                  Top Completed Modules:
+                </Typography>
+                {analytics.organization_analytics.top_completed_modules
+                  ?.length > 0 ? (
+                  analytics.organization_analytics.top_completed_modules.map(
+                    (mod: any) => (
+                      <Box key={mod.module_id} sx={{ ml: 2 }}>
+                        <Typography>Module: {mod.module_name}</Typography>
+                        <Typography>
+                          Completion Rate: {mod.completion_rate}%
+                        </Typography>
+                        <Typography>
+                          Total Attempts: {mod.total_attempts}
+                        </Typography>
+                      </Box>
+                    )
+                  )
+                ) : (
+                  <Typography sx={{ ml: 2 }}>No data</Typography>
+                )}
+                <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+                  Most Popular Modules:
+                </Typography>
+                {analytics.organization_analytics.most_popular_modules?.length >
+                0 ? (
+                  analytics.organization_analytics.most_popular_modules.map(
+                    (mod: any) => (
+                      <Box key={mod.module_id} sx={{ ml: 2 }}>
+                        <Typography>Module: {mod.module_name}</Typography>
+                        <Typography>
+                          Total Attempts: {mod.total_attempts}
+                        </Typography>
+                        <Typography>Completed: {mod.completed}</Typography>
+                        <Typography>In Progress: {mod.in_progress}</Typography>
+                        <Typography>
+                          Total Criteria: {mod.total_criteria}
+                        </Typography>
+                        <Typography>
+                          Passed Criteria: {mod.passed_criteria}
+                        </Typography>
+                      </Box>
+                    )
+                  )
+                ) : (
+                  <Typography sx={{ ml: 2 }}>No data</Typography>
+                )}
+              </Box>
+            ) : (
+              <Typography>No organization analytics data available.</Typography>
+            )}
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Details
             </Typography>
