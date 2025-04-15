@@ -4,7 +4,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-tool
 
 ## Setup
 
-Create a copy of the `.env.local.template` file and name it to `.env.local`. Put the Firebase keys in `.env.local`.
+Create a copy of the `.env.local.template` file and name it to `.env.local`. Put the Firebase keys in `.env.local`
 
 Install dependencies by running:
 
