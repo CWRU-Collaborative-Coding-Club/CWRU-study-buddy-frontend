@@ -11,6 +11,7 @@ import SessionsChart from "../components/SessionsChart";
 import PageViewsBarChart from "../components/PageViewsBarChart";
 import CustomTreeView from "../components/CustomTreeView";
 import ChartUserByCountry from "../components/ChartUserByCountry";
+import ProfilePage from "./profile";
 import { analyticsService } from "@/services/analyticsService";
 
 const data: StatCardProps[] = [
@@ -91,6 +92,9 @@ export default function DashboardContent() {
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Profile
             </Typography>
+
+            <ProfilePage />{ /* placeholder for profile card */ }
+
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Overview
             </Typography>
@@ -114,7 +118,9 @@ export default function DashboardContent() {
               <Grid size={{ xs: 12, md: 6 }}>
                 <PageViewsBarChart />
               </Grid>
-            </Grid> */}
+
+            </Grid>
+
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               User Analytics
             </Typography>

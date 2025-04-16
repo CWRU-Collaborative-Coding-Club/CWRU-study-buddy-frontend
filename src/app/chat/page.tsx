@@ -315,7 +315,7 @@ const ChatTrainingPage = () => {
           </Box>
         </Paper>
       </Grid>
-     
+
       {/* Main Chat Area */}
       <Grid item xs={12} md={9} sx={{ height: "100%" }}>
         <Paper

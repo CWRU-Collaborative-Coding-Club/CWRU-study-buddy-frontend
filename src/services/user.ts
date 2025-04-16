@@ -7,7 +7,8 @@ import {
   UpdateAccessLevelRequest,
   DeleteUserRequest,
   AuthResponse,
-  User
+  User,
+  UserProfile
 } from "../models/user";
 
 // API paths
@@ -22,6 +23,7 @@ const api = {
   listUsers: `/${path}/list`,
   listAllowedUsers: `/${path}/allowed-users`,
   updateAllowedAccessLevel: `/${path}/allowed-users/access-level`,
+  getMe: `/${path}/me`, // Add the new endpoint path
 };
 
 export function signUp(data: SignUpRequest): Promise<AuthResponse> {
@@ -143,5 +145,12 @@ export function updateAllowedUserAccessLevel(payload: {
       email: payload.email,
       new_access_level: payload.new_access_level
     },
+  }).then((response) => response.data);
+}
+
+export function getMe(): Promise<UserProfile> {
+  return client<UserProfile>({
+    url: api.getMe,
+    method: "get",
   }).then((response) => response.data);
 }

@@ -44,3 +44,11 @@ export interface AuthResponse {
   message: string;
   token: string;
 }
+
+export interface UserProfile {
+  email: string;
+  first_name: string;
+  last_name: string;
+  access_level: number;
+  user_id: string;
+}
