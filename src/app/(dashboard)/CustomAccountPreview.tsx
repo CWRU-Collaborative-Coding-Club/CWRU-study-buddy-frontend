@@ -90,10 +90,18 @@ export default function CustomAccountPreview(props: AccountPreviewProps) {
                     display: "flex",
                     alignItems: "left",
                     justifyContent: "center",
-                    gap: 2,
+                    marginLeft: 10
                   }}
                 >
-                  <span style={{ fontWeight: "bold" }}>{userName}</span>
+                  <span style={{ 
+                    fontWeight: "bold",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: "150px",
+                  }}>
+                    {userName}
+                  </span>
                   <Chip
                     label={userRole}
                     size="small"
