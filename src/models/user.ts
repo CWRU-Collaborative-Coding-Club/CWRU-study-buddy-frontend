@@ -51,4 +51,5 @@ export interface UserProfile {
   last_name: string;
   access_level: number;
   user_id: string;
+  avatar_url?: string;
 }
