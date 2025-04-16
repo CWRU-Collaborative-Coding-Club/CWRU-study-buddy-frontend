@@ -119,7 +119,7 @@ export default function DashboardContent() {
                 <PageViewsBarChart />
               </Grid>
 
-            </Grid>
+            </Grid> */}
 
             <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               User Analytics
@@ -273,10 +273,10 @@ export default function DashboardContent() {
             ) : (
               <Typography>No organization analytics data available.</Typography>
             )}
-            <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+            {/* <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
               Details
             </Typography>
-            {/* <Grid container spacing={2} columns={12}>
+            <Grid container spacing={2} columns={12}>
               <Grid size={{ xs: 12, lg: 6 }}>
                 <Stack gap={2} direction={{ xs: "column", sm: "row" }}>
                   <CustomTreeView />
