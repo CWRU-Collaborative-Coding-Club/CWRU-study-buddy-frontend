@@ -1,10 +1,10 @@
 # Eaton Call Center Training System Frontend Dashboard
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-toolpad-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app)..
+This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-toolpad-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Setup
 
-Create a copy of the `.env.local.template` file and name it to `.env.local`. Put the Firebase keys in `.env.local`..
+Create a copy of the `.env.local.template` file and name it to `.env.local`. Put the Firebase keys in `.env.local`.
 
 Install dependencies by running:
 
