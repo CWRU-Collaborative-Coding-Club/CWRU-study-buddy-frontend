@@ -56,7 +56,27 @@ export default function SignUp() {
       alert("User registered successfully!");
       router.push("/"); // Redirect to the dashboard page
     } catch (error: any) {
-      setError(error.response?.data?.detail || error.message);
+      // Handle structured validation errors
+      if (error.response?.data?.detail && Array.isArray(error.response.data.detail)) {
+        // Format validation errors
+        const errorMessages = error.response.data.detail.map((err: any) => {
+          // Extract field name from location path (e.g., ["body", "password"] -> "password")
+          const field = err.loc && err.loc.length > 1 ? err.loc[1] : 'unknown field';
+          
+          // Create a readable field name with first letter capitalized
+          const readableField = field.charAt(0).toUpperCase() + field.slice(1);
+          
+          // Just return the error message for password fields without showing the value
+          return field === 'password' ? 
+            `Password must contain at least one special character` : 
+            `${readableField}: ${err.msg}`;
+        }).join('\n');
+        
+        setError(errorMessages);
+      } else {
+        // Handle other types of errors
+        setError(error.response?.data?.detail || error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -129,9 +149,16 @@ export default function SignUp() {
               />
             </Box>
             {error && (
-              <Typography color="error" sx={{ mb: 2 }}>
-                {error}
-              </Typography>
+              <Box sx={{ mb: 2, p: 1, borderRadius: 1 }}>
+                <Typography color="error">
+                  {error.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      <br />
+                    </span>
+                  ))}
+                </Typography>
+              </Box>
             )}
             <Button
               type="submit"
