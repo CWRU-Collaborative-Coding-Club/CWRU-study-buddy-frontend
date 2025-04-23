@@ -272,7 +272,7 @@ export default function ChatHistoryPage() {
       renderCell: (params) => (
         <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
           <Typography variant="body2">
-            {formatDate(params.row.startedAt)}
+            {formatDate(params.row.started_at)}
           </Typography>
         </Box>
       ),
