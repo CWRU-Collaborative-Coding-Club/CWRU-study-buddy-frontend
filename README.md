@@ -1,6 +1,6 @@
 # Eaton Call Center Frontend
 
-A Next.js application for Eaton's call center operations, featuring module management, chat functionality, and user analytics.
+A Next.js application for Eaton's call center operations, featuring module management, chat functionality, and user analytics..
 
 ## Overview
 
