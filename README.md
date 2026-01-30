@@ -150,3 +150,4 @@ Copyright © Eaton Corporation plc. All rights reserved.
 
 For support, please contact the development team or refer to internal documentation.
 
+# CWRU-study-buddy-frontend
