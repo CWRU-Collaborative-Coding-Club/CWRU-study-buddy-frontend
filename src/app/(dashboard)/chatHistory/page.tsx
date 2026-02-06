@@ -133,17 +133,17 @@ export default function ChatHistoryPage() {
 
   // Fetch module titles when chat list changes
   useEffect(() => {
-    if (!loading) {
-    const agentIds = chats
-      .map((chat) => chat.agent_id)
-      .filter((id) => id && !moduleTitles[id]);
+    if (!loading && Array.isArray(chats)) {
+      const agentIds = chats
+        .map((chat) => chat.agent_id)
+        .filter((id) => id && !moduleTitles[id]);
 
-    // Get unique agent IDs only
-    const uniqueAgentIds = [...new Set(agentIds)];
+      // Get unique agent IDs only
+      const uniqueAgentIds = [...new Set(agentIds)];
 
-    if (uniqueAgentIds.length > 0) {
-      fetchModuleTitles(uniqueAgentIds);
-      }
+      if (uniqueAgentIds.length > 0) {
+        fetchModuleTitles(uniqueAgentIds);
+        }
     }
   }, [chats, fetchModuleTitles, moduleTitles, loading]);
 

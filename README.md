@@ -142,10 +142,6 @@ The application communicates with a backend API for all data operations. The API
 - `/module` - Module management endpoints
 
 
-## License
-
-Copyright © Eaton Corporation plc. All rights reserved.
-
 ## Support
 
 For support, please contact the development team or refer to internal documentation.

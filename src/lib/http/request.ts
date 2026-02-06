@@ -2,42 +2,31 @@ import { getCookie } from "@/utils/cookies";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
+// Supabase REST API configuration
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 // Config
 export const localBackend =
   process.env.NEXT_PUBLIC_LOCAL_BACKEND?.toUpperCase() === "TRUE";
-const apiVersion = process.env.NEXT_PUBLIC_API_VERSION;
-let baseURL = process.env.NEXT_PUBLIC_ONLINE_BASE_URL;
-let environment = process.env.NEXT_PUBLIC_DEV_ENVIRONMENT;
 
 // HTTP Agent config
 const httpsAgent = new https.Agent({
   rejectUnauthorized: process.env.NODE_ENV !== "development",
 });
 
-// Set base URL based on environment
-if (process.env.NODE_ENV === "development") {
-  baseURL = 'https://eaton1-api.xlab-cwru.com'
-    // ? process.env.NEXT_PUBLIC_LOCAL_BASE_URL
-    // : process.env.NEXT_PUBLIC_ONLINE_BASE_URL;
-  environment = 'dev'//process.env.NEXT_PUBLIC_DEV_ENVIRONMENT;
-} else if (process.env.NODE_ENV === "production") {
-  baseURL = process.env.NEXT_PUBLIC_ONLINE_BASE_URL;
-  environment =
-    process.env.NEXT_PUBLIC_CURRENT_ENV === "production"
-      ? process.env.NEXT_PUBLIC_PROD_ENVIRONMENT
-      : process.env.NEXT_PUBLIC_DEV_ENVIRONMENT;
-}
-
-export const apiUrl = `${baseURL}/${environment}`;
-
-// Create axios instance with base config
+// Create axios instance for Supabase REST API
 const client = axios.create({
-  baseURL: apiUrl,
+  baseURL: `${supabaseUrl}/rest/v1`,
   timeout: 10000,
   httpsAgent,
+  headers: {
+    "apikey": supabaseAnonKey,
+    "Content-Type": "application/json",
+  },
 });
 
-// Request interceptor
+// Request interceptor - add JWT token if available
 client.interceptors.request.use(
   async (config: AxiosRequestConfig) => {
     try {

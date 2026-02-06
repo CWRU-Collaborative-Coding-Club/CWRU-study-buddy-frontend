@@ -1,10 +1,10 @@
 "use client";
-import * as React from "react";
-import { Stack, Typography, Chip, Box, Avatar, useTheme } from "@mui/material";
+import { getCookie } from "@/utils/cookies";
+import { Avatar, Box, Chip, useTheme } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { AccountPreview, AccountPreviewProps } from "@toolpad/core/Account";
 import { jwtDecode } from "jwt-decode";
-import { getCookie } from "@/utils/cookies";
-import { alpha } from "@mui/material/styles";
+import * as React from "react";
 
 interface DecodedToken {
   user_id?: string;
@@ -17,6 +17,7 @@ export default function CustomAccountPreview(props: AccountPreviewProps) {
   const theme = useTheme();
   const [userName, setUserName] = React.useState<string>("");
   const [userRole, setUserRole] = React.useState<string>("Guest");
+  const [mounted, setMounted] = React.useState<boolean>(false);
   const [roleConfig, setRoleConfig] = React.useState<{
     color: string;
     bgColor: string;
@@ -26,6 +27,7 @@ export default function CustomAccountPreview(props: AccountPreviewProps) {
   });
 
   React.useEffect(() => {
+    setMounted(true);
     const token = getCookie("token");
     if (token) {
       try {
@@ -70,64 +72,66 @@ export default function CustomAccountPreview(props: AccountPreviewProps) {
 
   return (
     <Box>
-      <AccountPreview
-        {...props}
-        slots={{
-          avatar: () => (
-            <>
-              {props.variant === "expanded" ? (
-                <Avatar src={props.slotProps?.avatar?.src} />
-              ) : (
-                <Avatar
-                  src={props.slotProps?.avatar?.src}
-                  sx={{ width: 32, height: 32 }}
-                />
-              )}
-              {props.variant === "expanded" && (
-                <div
-                  style={{
-                    flexDirection: "column",
-                    display: "flex",
-                    alignItems: "left",
-                    justifyContent: "center",
-                    marginLeft: 10
-                  }}
-                >
-                  <span style={{ 
-                    fontWeight: "bold",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: "150px",
-                  }}>
-                    {userName}
-                  </span>
-                  <Chip
-                    label={userRole}
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                      height: 20,
-                      fontSize: "0.7rem",
-                      fontWeight: 500,
-                      bgcolor: roleConfig.bgColor,
-                      color: roleConfig.color,
-                      borderColor: roleConfig.color,
-                      borderRadius: 1
-                    }}
+      {mounted && (
+        <AccountPreview
+          {...props}
+          slots={{
+            avatar: () => (
+              <>
+                {props.variant === "expanded" ? (
+                  <Avatar src={props.slotProps?.avatar?.src} />
+                ) : (
+                  <Avatar
+                    src={props.slotProps?.avatar?.src}
+                    sx={{ width: 32, height: 32 }}
                   />
-                </div>
-              )}
-            </>
-          ),
-        }}
-        sx={{
-          "& .MuiTypography-root": { display: "none" },
-          display: "flex",
-          alignItems: "center",
-          "& .MuiIconButton-root": { mr: 0 },
-        }}
-      />
+                )}
+                {props.variant === "expanded" && (
+                  <div
+                    style={{
+                      flexDirection: "column",
+                      display: "flex",
+                      alignItems: "left",
+                      justifyContent: "center",
+                      marginLeft: 10
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: "bold",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "150px",
+                    }}>
+                      {userName}
+                    </span>
+                    <Chip
+                      label={userRole}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        height: 20,
+                        fontSize: "0.7rem",
+                        fontWeight: 500,
+                        bgcolor: roleConfig.bgColor,
+                        color: roleConfig.color,
+                        borderColor: roleConfig.color,
+                        borderRadius: 1
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            ),
+          }}
+          sx={{
+            "& .MuiTypography-root": { display: "none" },
+            display: "flex",
+            alignItems: "center",
+            "& .MuiIconButton-root": { mr: 0 },
+          }}
+        />
+      )}
     </Box>
   );
 }

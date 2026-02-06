@@ -1,13 +1,10 @@
+import { ChatDetailsResponse, ChatListResponse, ChatStatusUpdate } from '@/models/chat';
 import client from "../lib/http/request";
-import { ChatListResponse, ChatDetailsResponse, ChatStatusUpdate, MessageAdd } from '@/models/chat';
 
-// API paths
-const path = "chat";
-
+// Supabase REST API paths
 const api = {
-  listChats: `/${path}/list`,
-  getChat: `/${path}/message`, // Will append chat_id in function
-  updateStatus: `/${path}/status` // Will append chat_id in function
+  chats: "/chats",
+  messages: "/messages",
 };
 
 export async function listChats(
@@ -16,16 +13,22 @@ export async function listChats(
   page_size: string = '10'
 ): Promise<ChatListResponse> {
   try {
-    const response = await client({
-      url: api.listChats,
-      method: "GET",
-      params: {
-        status,
-        page,
-        limit: page_size
-      }
-    });
-    return response.data;
+    const offset = (parseInt(page) - 1) * parseInt(page_size);
+    
+    let url = `${api.chats}?order=created_at.desc&limit=${page_size}&offset=${offset}`;
+    
+    if (status) {
+      url += `&status=eq.${status}`;
+    }
+
+    const response = await client.get(url);
+    
+    return {
+      chats: response.data,
+      total: response.headers['content-range']?.split('/')[1] || response.data.length,
+      page: parseInt(page),
+      page_size: parseInt(page_size),
+    };
   } catch (error) {
     console.error("Error fetching chats:", error);
     throw error;
@@ -34,12 +37,18 @@ export async function listChats(
 
 export async function getChatDetail(chatId: string, version?: string): Promise<ChatDetailsResponse> {
   try {
-    const response = await client({
-      url: `${api.getChat}/${chatId}`,
-      method: "GET",
-      params: version ? { version } : undefined
-    });
-    return response.data;
+    let url = `${api.messages}?chat_id=eq.${chatId}&order=created_at.asc`;
+    
+    if (version) {
+      url += `&version=eq.${version}`;
+    }
+
+    const response = await client.get(url);
+    
+    return {
+      chat_id: chatId,
+      messages: response.data,
+    };
   } catch (error) {
     console.error("Error fetching chat details:", error);
     throw error;
@@ -48,14 +57,15 @@ export async function getChatDetail(chatId: string, version?: string): Promise<C
 
 export async function updateChatStatus(data: ChatStatusUpdate): Promise<{ message: string; chat_id: string }> {
   try {
-    const response = await client({
-      url: `${api.updateStatus}/${data.chat_id}`,
-      method: "PUT",
-      data: { 
-        chat_id: data.chat_id,
-        status: data.status }
-    });
-    return response.data;
+    const response = await client.patch(
+      `${api.chats}?id=eq.${data.chat_id}`,
+      { status: data.status }
+    );
+    
+    return {
+      message: "Chat status updated successfully",
+      chat_id: data.chat_id,
+    };
   } catch (error) {
     console.error("Error updating chat status:", error);
     throw error;

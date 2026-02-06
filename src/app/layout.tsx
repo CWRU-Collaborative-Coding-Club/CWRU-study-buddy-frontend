@@ -143,8 +143,8 @@ export default function RootLayout({
                     }}
                   >
                     <img
-                      src="/eaton-logo-mobile.png"
-                      alt="Eaton logo"
+                      src="/study-buddy-logo.png"
+                      alt="StudyBuddy logo"
                       width={100}
                     />
                   </div>

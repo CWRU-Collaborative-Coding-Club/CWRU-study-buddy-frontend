@@ -308,8 +308,8 @@ const ChatTrainingPage = () => {
             }}
           >
             <img
-              src="/eaton-logo-mobile.png"
-              alt="Eaton logo"
+              src="/study-buddy-logo.png"
+              alt="StudyBuddy logo"
               width={300}
             />
           </Box>

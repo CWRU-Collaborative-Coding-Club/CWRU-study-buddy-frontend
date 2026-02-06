@@ -1,47 +1,46 @@
 "use client";
-import * as React from "react";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { jwtDecode } from "jwt-decode";
-import { DataGrid, GridColDef, GridActionsCellItem } from "@mui/x-data-grid";
+import { useAuth } from "@/hooks/useAuth";
+import { DecodedToken, User } from "@/models/user";
 import {
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
-  TextField,
-  Typography,
-  Alert,
-} from "@mui/material";
+    addUser,
+    deleteAllowedUser,
+    deleteUsers,
+    listAllowedUsers,
+    listAllPendingUsers,
+    listUsers,
+    updateAccessLevel,
+    updateAllowedUserAccessLevel
+} from "@/services/user";
+import { getCookie } from "@/utils/cookies";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  listUsers,
-  addUser,
-  deleteUsers,
-  updateAccessLevel,
-  listAllowedUsers,
-  listAllPendingUsers,
-  deleteAllowedUser,
-  updateAllowedUserAccessLevel
-} from "@/services/user";
-import { getCookie } from "@/utils/cookies";
-import { DecodedToken, User } from "@/models/user";
 import SearchIcon from "@mui/icons-material/Search";
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    TextField,
+    Typography,
+} from "@mui/material";
 import InputAdornment from "@mui/material/InputAdornment";
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { useTheme } from '@mui/material/styles';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
+import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import { jwtDecode } from "jwt-decode";
+import * as React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function UsersPage() {
   const theme = useTheme();
@@ -87,199 +86,212 @@ export default function UsersPage() {
   const { accessLevel, userId } = useAuth();
 
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+  const [mounted, setMounted] = useState(false);
 
   const [showInactive, setShowInactive] = useState(false);
   const [userFilter, setUserFilter] = useState("active"); // "active", "pending", "deleted"
+
+  // Cleanup on unmount
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      isMountedRef.current = false;
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
+  // Fetch users from API
+  const fetchUsers = useCallback(async (query: string = "", filter: string = userFilter) => {
+    if (!isMountedRef.current) return;
+    
+    setLoading(true);
+    try {
+      // Only fetch from API when filter changes or on initial load
+      if (!allUsers[filter as keyof typeof allUsers].length || filter !== userFilter) {
+        if (filter === "pending") {
+          // Get pending users from allowed_users
+          const allAllowedUsers = await listAllPendingUsers("");
+          if (!isMountedRef.current) return;
+          
+          // Also fetch active and deleted users if needed
+          let activeUsers = allUsers.active;
+          let deletedUsers = allUsers.deleted;
+          
+          if (!activeUsers.length) {
+            activeUsers = await listUsers("active", "");
+            if (!isMountedRef.current) return;
+            setAllUsers(prev => ({ ...prev, active: activeUsers }));
+          }
+          
+          if (!deletedUsers.length) {
+            deletedUsers = await listUsers("deleted", "");
+            if (!isMountedRef.current) return;
+            setAllUsers(prev => ({ ...prev, deleted: deletedUsers }));
+          }
+          
+          // Combine active and deleted users to get all registered emails
+          const registeredEmails = new Set([
+            ...activeUsers.map((user: User) => user.email.toLowerCase()),
+            ...deletedUsers.map((user: User) => user.email.toLowerCase())
+          ]);
+          
+          // Filter out allowed users who already exist in the registered users list
+          const pendingUsers = allAllowedUsers.filter(
+            (user) => !registeredEmails.has(user.email.toLowerCase())
+          );
+          
+          // Store pending users in state
+          if (isMountedRef.current) {
+            setAllUsers(prev => ({ ...prev, pending: pendingUsers }));
+          
+            // Transform for display
+            const transformedData = pendingUsers.map((user) => ({
+              id: user.email,
+              name: 'Pending User',
+              email: user.email,
+              accessLevel: user.access_level,
+              status: "pending" as const
+            }));
+            
+            setRows(transformedData);
+          }
+        } else {
+          const filterType = filter === "deleted" ? "deleted" : "active";
+          const response = await listUsers(filterType, "");
+          if (!isMountedRef.current) return;
+          
+          // Store users in state
+          if (isMountedRef.current) {
+            setAllUsers(prev => ({ ...prev, [filterType]: response }));
+          
+            // Transform for display
+            const transformedData = response.map((user: User) => ({
+              id: user.user_id || user.email,
+              name: !user.first_name && !user.last_name ? 
+                  'User Without Name' : 
+                  `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name',
+              email: user.email,
+              accessLevel: user.access_level,
+              status: user.access_level === 0 ? "deleted" as const : "active" as const
+            }));
+            
+            setRows(transformedData);
+          }
+        }
+      } else if (query.trim()) {
+        // Client-side searching when we already have the data
+        let filteredData = [];
+        
+        if (filter === "pending") {
+          // Filter pending users
+          filteredData = allUsers.pending.filter(user => 
+            user.email.toLowerCase().includes(query.toLowerCase())
+          ).map(user => ({
+            id: user.email,
+            name: 'Pending User',
+            email: user.email,
+            accessLevel: user.access_level,
+            status: "pending" as const
+          }));
+        } else {
+          // Filter active or deleted users
+          const filterType = filter === "deleted" ? "deleted" : "active";
+          filteredData = allUsers[filterType].filter((user: User) => {
+            const query_lower = query.toLowerCase();
+            const email_match = user.email.toLowerCase().includes(query_lower);
+            const firstname_match = (user.first_name || '').toLowerCase().includes(query_lower);
+            const lastname_match = (user.last_name || '').toLowerCase().includes(query_lower);
+            const id_match = user.user_id.toLowerCase().includes(query_lower);
+            
+            // Create full name for combined search
+            const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase().trim();
+            const fullname_match = fullName.includes(query_lower);
+            
+            return email_match || firstname_match || lastname_match || id_match || fullname_match;
+          }).map((user: User) => ({
+            id: user.user_id || user.email,
+            name: !user.first_name && !user.last_name ? 
+                'User Without Name' : 
+                `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name',
+            email: user.email,
+            accessLevel: user.access_level,
+            status: user.access_level === 0 ? "deleted" as const : "active" as const
+          }));
+        }
+        
+        if (isMountedRef.current) {
+          setRows(filteredData);
+        }
+      } else {
+        // No query, show all data for current filter
+        let displayData = [];
+        
+        if (filter === "pending") {
+          displayData = allUsers.pending.map(user => ({
+            id: user.email,
+            name: 'Pending User',
+            email: user.email,
+            accessLevel: user.access_level,
+            status: "pending" as const
+          }));
+        } else {
+          const filterType = filter === "deleted" ? "deleted" : "active";
+          displayData = allUsers[filterType].map((user: User) => ({
+            id: user.user_id || user.email,
+            name: !user.first_name && !user.last_name ? 
+                'User Without Name' : 
+                `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name',
+            email: user.email,
+            accessLevel: user.access_level,
+            status: user.access_level === 0 ? "deleted" as const : "active" as const
+          }));
+        }
+        
+        if (isMountedRef.current) {
+          setRows(displayData);
+        }
+      }
+      
+      if (isMountedRef.current) {
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      if (isMountedRef.current) {
+        setError("Failed to load users. Please try again.");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [userFilter, allUsers]);
 
   // Fetch user data on component mount
   useEffect(() => {
     // Set current user info from auth hook or token
     if (userId && accessLevel !== null) {
-      setCurrentUserId(userId);
-      setCurrentUserAccessLevel(accessLevel);
+      if (isMountedRef.current) {
+        setCurrentUserId(userId);
+        setCurrentUserAccessLevel(accessLevel);
+      }
     } else {
       const token = getCookie("token");
       if (token) {
         try {
           const decoded = jwtDecode<DecodedToken>(token);
-          setCurrentUserAccessLevel(decoded.access_level);
-          setCurrentUserId(decoded.user_id);
+          if (isMountedRef.current) {
+            setCurrentUserAccessLevel(decoded.access_level);
+            setCurrentUserId(decoded.user_id);
+          }
         } catch (error) {
           console.error("Invalid token:", error);
-          setCurrentUserAccessLevel(null);
-        }
-      }
-    }
-
-    fetchUsers();
-  }, [userId, accessLevel]);
-
-// Fetch users from API
-const fetchUsers = useCallback(async (query: string = "", filter: string = userFilter) => {
-  setLoading(true);
-  try {
-    // Only fetch from API when filter changes or on initial load
-    if (!allUsers[filter as keyof typeof allUsers].length || filter !== userFilter) {
-      if (filter === "pending") {
-        // Get pending users from allowed_users
-        const allAllowedUsers = await listAllPendingUsers("");
-        
-        // Also fetch active and deleted users if needed
-        let activeUsers = allUsers.active;
-        let deletedUsers = allUsers.deleted;
-        
-        if (!activeUsers.length) {
-          activeUsers = await listUsers("active", "");
-          setAllUsers(prev => ({ ...prev, active: activeUsers }));
-        }
-        
-        if (!activeUsers.length) {
-          activeUsers = await listUsers("active", "");
-          setAllUsers(prev => ({ ...prev, active: activeUsers }));
-        }
-        
-        if (!deletedUsers.length) {
-          deletedUsers = await listUsers("deleted", "");
-          setAllUsers(prev => ({ ...prev, deleted: deletedUsers }));
-        }
-        
-        // Combine active and deleted users to get all registered emails
-        const registeredEmails = new Set([
-          ...activeUsers.map((user: User) => user.email.toLowerCase()),
-          ...deletedUsers.map((user: User) => user.email.toLowerCase())
-        ]);
-        
-        // Filter out allowed users who already exist in the registered users list
-        const pendingUsers = allAllowedUsers.filter(
-          (user) => !registeredEmails.has(user.email.toLowerCase())
-        );
-        
-        // Store pending users in state
-        setAllUsers(prev => ({ ...prev, pending: pendingUsers }));
-        
-        // Transform for display
-        const transformedData = pendingUsers.map((user) => ({
-          id: user.email,
-          name: 'Pending User',
-          email: user.email,
-          accessLevel: user.access_level,
-          status: "pending" as const
-        }));
-        
-        setRows(transformedData);
-      } else {
-        const filterType = filter === "deleted" ? "deleted" : "active";
-        const response = await listUsers(filterType, "");
-        
-        // Store users in state
-        setAllUsers(prev => ({ ...prev, [filterType]: response }));
-        
-        // Transform for display
-        const transformedData = response.map((user: User) => ({
-          id: user.user_id,
-          name: !user.first_name && !user.last_name ? 
-              'User Without Name' : 
-              `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name',
-          email: user.email,
-          accessLevel: user.access_level,
-          status: user.access_level === 0 ? "deleted" as const : "active" as const
-        }));
-        
-        setRows(transformedData);
-      }
-    } else if (query.trim()) {
-      // Client-side searching when we already have the data
-      let filteredData = [];
-      
-      if (filter === "pending") {
-        // Filter pending users
-        filteredData = allUsers.pending.filter(user => 
-          user.email.toLowerCase().includes(query.toLowerCase())
-        ).map(user => ({
-          id: user.email,
-          name: 'Pending User',
-          email: user.email,
-          accessLevel: user.access_level,
-          status: "pending" as const
-        }));
-      } else {
-        // Filter active or deleted users
-        const filterType = filter === "deleted" ? "deleted" : "active";
-        filteredData = allUsers[filterType].filter((user: User) => {
-          const query_lower = query.toLowerCase();
-          const email_match = user.email.toLowerCase().includes(query_lower);
-          const firstname_match = (user.first_name || '').toLowerCase().includes(query_lower);
-          const lastname_match = (user.last_name || '').toLowerCase().includes(query_lower);
-          const id_match = user.user_id.toLowerCase().includes(query_lower);
-          
-          // Create full name for combined search
-          const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase().trim();
-          const fullname_match = fullName.includes(query_lower);
-          
-          return email_match || firstname_match || lastname_match || id_match || fullname_match;
-        }).map((user: User) => ({
-          id: user.user_id,
-          name: !user.first_name && !user.last_name ? 
-              'User Without Name' : 
-              `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name',
-          email: user.email,
-          accessLevel: user.access_level,
-          status: user.access_level === 0 ? "deleted" as const : "active" as const
-        }));
-      }
-      
-      setRows(filteredData);
-    } else {
-      // No query, show all data for current filter
-      let displayData = [];
-      
-      if (filter === "pending") {
-        displayData = allUsers.pending.map(user => ({
-          id: user.email,
-          name: 'Pending User',
-          email: user.email,
-          accessLevel: user.access_level,
-          status: "pending" as const
-        }));
-      } else {
-        const filterType = filter === "deleted" ? "deleted" : "active";
-        displayData = allUsers[filterType].map((user: User) => ({
-          id: user.user_id,
-          name: !user.first_name && !user.last_name ? 
-              'User Without Name' : 
-              `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name',
-          email: user.email,
-          accessLevel: user.access_level,
-          status: user.access_level === 0 ? "deleted" as const : "active" as const
-        }));
-      }
-      
-      setRows(displayData);
-    }
-    
-    setError(null);
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    setError("Failed to load users. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-}, [userFilter, allUsers]);
-
-  useEffect(() => {
-    if (userId && accessLevel !== null) {
-      setCurrentUserId(userId);
-      setCurrentUserAccessLevel(accessLevel);
-    } else {
-      const token = getCookie("token");
-      if (token) {
-        try {
-          const decoded = jwtDecode<DecodedToken>(token);
-          setCurrentUserAccessLevel(decoded.access_level);
-          setCurrentUserId(decoded.user_id);
-        } catch (error) {
-          console.error("Invalid token:", error);
-          setCurrentUserAccessLevel(null);
+          if (isMountedRef.current) {
+            setCurrentUserAccessLevel(null);
+          }
         }
       }
     }
@@ -753,35 +765,37 @@ try {
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        loading={loading}
-        pagination
-        pageSizeOptions={[10, 25, 50, 100]}
-        initialState={{
-          pagination: { paginationModel: { pageSize: 25 } },
-        }}
-        getRowId={(row) => row.id}
-        autoHeight={false}
-        disableRowSelectionOnClick
-        getRowClassName={(params) => {
-          if (params.row.status === "pending") return "pending-row";
-          if (params.row.status === "deleted") return "deleted-row";
-          return "";
-        }}
-        sx={{
-          '& .pending-row': {
-            bgcolor: alpha(theme.palette.info.main, 0.05),
-          },
-          '& .deleted-row': {
-            bgcolor: alpha(theme.palette.text.disabled, 0.05),
-            color: theme.palette.text.disabled,
-          },
-          height: 'calc(100% - 50px)', // Subtract the filter buttons height
-          borderRadius: 1
-        }}
-      />
+      {mounted && (
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          loading={loading}
+          pagination
+          pageSizeOptions={[10, 25, 50, 100]}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 25 } },
+          }}
+          getRowId={(row) => row.id}
+          autoHeight={false}
+          disableRowSelectionOnClick
+          getRowClassName={(params) => {
+            if (params.row.status === "pending") return "pending-row";
+            if (params.row.status === "deleted") return "deleted-row";
+            return "";
+          }}
+          sx={{
+            '& .pending-row': {
+              bgcolor: alpha(theme.palette.info.main, 0.05),
+            },
+            '& .deleted-row': {
+              bgcolor: alpha(theme.palette.text.disabled, 0.05),
+              color: theme.palette.text.disabled,
+            },
+            height: 'calc(100% - 50px)', // Subtract the filter buttons height
+            borderRadius: 1
+          }}
+        />
+      )}
       </div>
 
       {/* Add Users Dialog */}

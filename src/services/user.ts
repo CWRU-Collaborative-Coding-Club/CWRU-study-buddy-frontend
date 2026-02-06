@@ -1,68 +1,119 @@
-import { list } from "postcss";
+import { supabase } from "../lib/http/firebase";
 import client from "../lib/http/request";
-import { 
-  SignUpRequest, 
-  SignInRequest, 
-  AddUserRequest, 
-  UpdateAccessLevelRequest,
-  DeleteUserRequest,
-  AuthResponse,
-  User,
-  UserProfile
+import {
+    AddUserRequest,
+    AuthResponse,
+    DeleteUserRequest,
+    SignInRequest,
+    SignUpRequest,
+    UpdateAccessLevelRequest,
+    User,
+    UserProfile
 } from "../models/user";
 
-// API paths
-const path = "user";
-
+// Supabase REST API paths
 const api = {
-  signUp: `/${path}/signup`,
-  signIn: `/${path}/signin`,
-  addUser: `/${path}/allowed-users`,
-  deleteUser: `/${path}`, // Will append user_id in function
-  updateAccessLevel: `/${path}/set-access-level`,
-  listUsers: `/${path}/list`,
-  listAllowedUsers: `/${path}/allowed-users`,
-  updateAllowedAccessLevel: `/${path}/allowed-users/access-level`,
-  getMe: `/${path}/me`, // Add the new endpoint path
+  users: "/users",
+  allowedUsers: "/allowed_users",
 };
 
-export function signUp(data: SignUpRequest): Promise<AuthResponse> {
-  return client<AuthResponse>({
-    url: api.signUp,
-    method: "post",
-    data,
-  }).then((response: { data: AuthResponse }) => response.data);
+// Authentication using Supabase Auth
+export async function signUp(data: SignUpRequest): Promise<AuthResponse> {
+  try {
+    const { data: authData, error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: {
+          display_name: data.email.split("@")[0], // Or use name if provided
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    // Get JWT token from session
+    const token = authData.session?.access_token || "";
+    
+    // Create user profile in users table
+    if (authData.user?.id) {
+      await client.post(api.users, {
+        id: authData.user.id,
+        email: data.email,
+        access_level: 1, // Default access level
+      });
+    }
+
+    return {
+      token,
+      user: {
+        user_id: authData.user?.id || "",
+        email: data.email,
+        access_level: 1,
+      },
+    };
+  } catch (error) {
+    console.error("Sign up error:", error);
+    throw error;
+  }
 }
 
-export function signIn(data: SignInRequest): Promise<AuthResponse> {
-  return client({
-    url: api.signIn,
-    method: "post",
-    data,
-  }).then((response: { data: AuthResponse }) => response.data);
+export async function signIn(data: SignInRequest): Promise<AuthResponse> {
+  try {
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (error) throw error;
+
+    const token = authData.session?.access_token || "";
+
+    // Fetch user profile from users table
+    const { data: userData, error: userError } = await client.get(
+      `${api.users}?id=eq.${authData.user?.id}`
+    );
+
+    if (userError) throw userError;
+
+    const user = userData?.[0] || { user_id: authData.user?.id };
+
+    return {
+      token,
+      user: {
+        user_id: user.user_id,
+        email: data.email,
+        access_level: user.access_level || 1,
+      },
+    };
+  } catch (error) {
+    console.error("Sign in error:", error);
+    throw error;
+  }
 }
 
-export function addUser(data: AddUserRequest): Promise<{message: string}> {
-  return client({
-    url: api.addUser,
-    method: "post",
-    data,
-  }).then((response: { data: { message: string } }) => response.data);
+export function addUser(data: AddUserRequest): Promise<{ message: string }> {
+  return client
+    .post(api.allowedUsers, {
+      email: data.email,
+      access_level: data.access_level || 1,
+    })
+    .then((response: { data: { message: string } }) => response.data);
 }
 
-export function deleteUsers(data: DeleteUserRequest): Promise<{message: string}> {
-  return client({
-    url: `${api.deleteUser}/${data.user_id}`,
-    method: "delete",
-  }).then((response: { data: { message: string } }) => response.data);
+export function deleteUsers(data: DeleteUserRequest): Promise<{ message: string }> {
+  return client
+    .delete(`${api.users}?id=eq.${data.user_id}`)
+    .then((response: { data: { message: string } }) => response.data);
 }
 
-export function updateAccessLevel(data: UpdateAccessLevelRequest): Promise<{message: string}> {
-  return client({
-    url: api.updateAccessLevel,
-    method: "post",
-    data,
-  }).then((response: { data: { message: string } }) => response.data);
+export function updateAccessLevel(data: UpdateAccessLevelRequest): Promise<{ message: string }> {
+  return client
+    .patch(
+      `${api.users}?id=eq.${data.user_id}`,
+      { access_level: data.access_level }
+    )
+    .then((response: { data: { message: string } }) => response.data);
 }
 
 export function listUsers(
@@ -71,11 +122,17 @@ export function listUsers(
   page: number = 1, 
   pageSize: number = 25
 ): Promise<User[]> {
-  return client({
-    url: api.listUsers,
-    method: "get",
-    params: { filter_type: filterType, search, page, page_size: pageSize }
-  }).then((response: { data: User[] }) => response.data);
+  const offset = (page - 1) * pageSize;
+  
+  let url = `${api.users}?order=created_at.desc&limit=${pageSize}&offset=${offset}`;
+  
+  if (search) {
+    url += `&or=(email.ilike.%${search}%,display_name.ilike.%${search}%)`;
+  }
+
+  return client
+    .get(url)
+    .then((response: { data: User[] }) => response.data);
 }
 
 export function listAllowedUsers(
@@ -93,11 +150,22 @@ export function listAllowedUsers(
   page_size: number;
   total_count: number;
 }> {
-  return client({
-    url: api.listAllowedUsers,
-    method: "get",
-    params: { search, page, page_size: pageSize }
-  }).then((response) => response.data);
+  const offset = (page - 1) * pageSize;
+  
+  let url = `${api.allowedUsers}?order=created_at.desc&limit=${pageSize}&offset=${offset}`;
+  
+  if (search) {
+    url += `&or=(email.ilike.%${search}%)`;
+  }
+
+  return client
+    .get(url)
+    .then((response: { data: any[] }) => ({
+      allowed_users: response.data || [],
+      page,
+      page_size: pageSize,
+      total_count: response.data?.length || 0,
+    }));
 }
 
 export async function listAllPendingUsers(search: string = ""): Promise<any[]> {
@@ -128,29 +196,51 @@ export async function listAllPendingUsers(search: string = ""): Promise<any[]> {
 }
 
 export function deleteAllowedUser(email: string): Promise<{message: string}> {
-  return client({
-    url: `${api.addUser}/${encodeURIComponent(email)}`,
-    method: "delete",
-  }).then((response: { data: { message: string } }) => response.data);
+  return client
+    .delete(`${api.allowedUsers}?email=eq.${encodeURIComponent(email)}`)
+    .then(() => ({ message: "User deleted successfully" }));
 }
 
 export function updateAllowedUserAccessLevel(payload: {
   email: string;
   new_access_level: number;
 }): Promise<{ message: string }> {
-  return client({
-    url: api.updateAllowedAccessLevel,
-    method: "put",
-    data: {
-      email: payload.email,
-      new_access_level: payload.new_access_level
-    },
-  }).then((response) => response.data);
+  return client
+    .patch(
+      `${api.allowedUsers}?email=eq.${encodeURIComponent(payload.email)}`,
+      { access_level: payload.new_access_level }
+    )
+    .then(() => ({ message: "Access level updated successfully" }));
 }
 
-export function getMe(): Promise<UserProfile> {
-  return client<UserProfile>({
-    url: api.getMe,
-    method: "get",
-  }).then((response) => response.data);
+export async function getMe(): Promise<UserProfile> {
+  try {
+    const { data: authUser } = await supabase.auth.getUser();
+    
+    if (!authUser.user?.id) {
+      throw new Error("User not authenticated");
+    }
+
+    // Fetch user profile from users table
+    const { data: userData, error } = await client.get(
+      `${api.users}?id=eq.${authUser.user.id}`
+    );
+
+    if (error) throw error;
+
+    const user = userData?.[0];
+    if (!user) {
+      throw new Error("User profile not found");
+    }
+
+    return {
+      user_id: user.id,
+      email: user.email,
+      access_level: user.access_level,
+      display_name: user.display_name,
+    };
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+    throw error;
+  }
 }

@@ -1,39 +1,39 @@
 "use client";
 import {
-  createChatAPI,
-  createModule,
-  deleteModule,
-  deleteModuleResource,
-  editModule,
-  getModules,
-  getModuleResources,
+    createChatAPI,
+    createModule,
+    deleteModule,
+    deleteModuleResource,
+    editModule,
+    getModuleResources,
+    getModules,
 } from "@/services/module";
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import AddIcon from "@mui/icons-material/Add";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SearchIcon from "@mui/icons-material/Search";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import CloseIcon from '@mui/icons-material/Close';
 import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  InputAdornment,
-  TextField,
-  Typography,
-  IconButton,
+    Alert,
+    Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    InputAdornment,
+    TextField,
+    Typography,
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useEffect } from "react";
 import { useAuth } from "../../../hooks/useAuth";
-import { Module, CreateModuleRequest, EditModuleRequest } from "../../../models/module";
-import { useRouter } from "next/navigation";
+import { EditModuleRequest, Module } from "../../../models/module";
 
 // DataGrid component
 const CustomDataGrid: React.FC<{
@@ -54,35 +54,43 @@ const CustomDataGrid: React.FC<{
   loading,
   onPaginationModelChange,
 }) => {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div style={{ height: "calc(100vh - 180px)", width: "100%" }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        pageSizeOptions={[5, 10, 25, 50]}
-        paginationModel={paginationModel}
-        paginationMode="server"
-        onPaginationModelChange={onPaginationModelChange}
-        rowCount={rowCount || rows.length} // Fallback to rows.length if rowCount is 0
-        getRowId={(row) => row.agent_id}
-        autoHeight={false}
-        disableRowSelectionOnClick
-        loading={loading}
-        pagination
-        sx={{
-          borderRadius: 1,
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(0, 0, 0, 0.04)",
-          },
-          "& .MuiDataGrid-cell:focus": {
-            outline: "none",
-          },
-          "& .MuiDataGrid-footerContainer": {
-            display: "flex",
-            justifyContent: "flex-end",
-          },
-        }}
-      />
+      {mounted && (
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pageSizeOptions={[5, 10, 25, 50]}
+          paginationModel={paginationModel}
+          paginationMode="server"
+          onPaginationModelChange={onPaginationModelChange}
+          rowCount={rowCount || rows.length} // Fallback to rows.length if rowCount is 0
+          getRowId={(row) => row.agent_id}
+          autoHeight={false}
+          disableRowSelectionOnClick
+          loading={loading}
+          pagination
+          sx={{
+            borderRadius: 1,
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(0, 0, 0, 0.04)",
+            },
+            "& .MuiDataGrid-cell:focus": {
+              outline: "none",
+            },
+            "& .MuiDataGrid-footerContainer": {
+              display: "flex",
+              justifyContent: "flex-end",
+            },
+          }}
+        />
+      )}
     </div>
   );
 };
