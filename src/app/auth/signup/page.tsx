@@ -54,7 +54,7 @@ export default function SignUp() {
       document.cookie = `token=${token}; path=/; max-age=${3 * 24 * 60 * 60}`;
 
       alert("User registered successfully!");
-      router.push("/"); // Redirect to the dashboard page
+      router.push("/courses"); // Redirect to course selection
     } catch (error: any) {
       // Handle structured validation errors
       if (error.response?.data?.detail && Array.isArray(error.response.data.detail)) {

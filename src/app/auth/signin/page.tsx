@@ -65,7 +65,7 @@ async function JWTSignIn(
       console.log("Sign in successful");
 
       // Redirect to the home page after successful sign-in
-      return { ok: true, redirectUrl: "/" };
+      return { ok: true, redirectUrl: "/courses" };
     } catch (error: any) {
       console.error("Sign in error:", error);
       return { ok: false, error: error.message };
@@ -88,7 +88,7 @@ export default function SignIn() {
 
   React.useEffect(() => {
     if (isLoggedIn() && typeof window !== "undefined") {
-      router.push("/"); // Redirect to home if already logged in
+      router.push("/courses"); // Redirect to course selection if already logged in
     }
   }, [router]);
 

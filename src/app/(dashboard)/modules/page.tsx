@@ -1,12 +1,12 @@
 "use client";
 import {
-    createChatAPI,
-    createModule,
-    deleteModule,
-    deleteModuleResource,
-    editModule,
-    getModuleResources,
-    getModules,
+  createChatAPI,
+  createModule,
+  deleteModule,
+  deleteModuleResource,
+  editModule,
+  getModuleResources,
+  getModules,
 } from "@/services/module";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from '@mui/icons-material/Close';
@@ -16,17 +16,17 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SearchIcon from "@mui/icons-material/Search";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
-    Alert,
-    Box,
-    Button,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    IconButton,
-    InputAdornment,
-    TextField,
-    Typography,
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  InputAdornment,
+  TextField,
+  Typography,
 } from "@mui/material";
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
 import { useRouter } from "next/navigation";
