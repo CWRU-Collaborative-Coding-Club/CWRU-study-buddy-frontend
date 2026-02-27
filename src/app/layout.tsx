@@ -79,7 +79,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     }
     return [
       { kind: "header", title: "Main items" },
-      { title: "Dashboard", icon: <DashboardIcon /> },
+      { title: "Dashboard: " + selectedCourse.name, icon: <DashboardIcon /> },
       { segment: "users", title: "Users", icon: <UsersIcon /> },
       { segment: "modules", title: "Modules", icon: <AgentsIcon /> },
       { segment: "chatHistory", title: "Chat History", icon: <ChatIcon /> },

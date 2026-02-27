@@ -1,5 +1,12 @@
 "use client";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { getCookie } from "@/utils/cookies";
+import {
+  clearLegacyPersistedCourse,
+  clearPersistedCourseForToken,
+  getPersistedCourseForToken,
+  persistCourseForToken,
+} from "@/utils/courseSelection";
 
 export interface Course {
   id: string;
@@ -13,43 +20,48 @@ interface CourseContextProps {
   selectedCourse: Course | null;
   selectCourse: (course: Course) => void;
   clearCourse: () => void;
+  restoreCourseForCurrentUser: () => Course | null;
 }
 
 const CourseContext = createContext<CourseContextProps>({
   selectedCourse: null,
   selectCourse: () => {},
   clearCourse: () => {},
+  restoreCourseForCurrentUser: () => null,
 });
-
-const STORAGE_KEY = "selectedCourse";
 
 export const CourseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
-  // Restore from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setSelectedCourse(JSON.parse(stored));
-      }
-    } catch {
-      // ignore parse errors
-    }
+  const restoreCourseForCurrentUser = useCallback((): Course | null => {
+    const token = getCookie("token");
+    const storedCourse = getPersistedCourseForToken<Course>(token);
+    setSelectedCourse(storedCourse);
+    return storedCourse;
   }, []);
+
+  // Cleanup global legacy key and restore user-scoped course on mount.
+  useEffect(() => {
+    clearLegacyPersistedCourse();
+    restoreCourseForCurrentUser();
+  }, [restoreCourseForCurrentUser]);
 
   const selectCourse = useCallback((course: Course) => {
     setSelectedCourse(course);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(course));
+    const token = getCookie("token");
+    persistCourseForToken(token, course);
   }, []);
 
   const clearCourse = useCallback(() => {
     setSelectedCourse(null);
-    localStorage.removeItem(STORAGE_KEY);
+    const token = getCookie("token");
+    clearPersistedCourseForToken(token);
   }, []);
 
   return (
-    <CourseContext.Provider value={{ selectedCourse, selectCourse, clearCourse }}>
+    <CourseContext.Provider
+      value={{ selectedCourse, selectCourse, clearCourse, restoreCourseForCurrentUser }}
+    >
       {children}
     </CourseContext.Provider>
   );

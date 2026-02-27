@@ -8,6 +8,8 @@ import { AuthProvider } from "@toolpad/core";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/services/user";
 import { getCookie } from "@/utils/cookies";
+import { hasPersistedCourseForToken } from "@/utils/courseSelection";
+import { useCourse } from "@/app/context/CourseContext";
 
 function ForgotPasswordLink() {
   return (
@@ -39,10 +41,15 @@ interface LocalAuthResponse {
   redirectUrl?: string;
 }
 
+function getPostSignInRedirectPath(token?: string | null): string {
+  return hasPersistedCourseForToken(token) ? "/" : "/courses";
+}
+
 async function JWTSignIn(
   provider: AuthProvider,
   formData?: FormData,
-  callbackUrl?: string
+  callbackUrl?: string,
+  onSignedIn?: () => void
 ): Promise<LocalAuthResponse> {
   if (provider.id === "credentials") {
     const email = formData?.get("email")?.toString() || "";
@@ -61,11 +68,11 @@ async function JWTSignIn(
 
       // Store the JWT in a cookie with a 3-day expiry
       document.cookie = `token=${token}; path=/; max-age=${3 * 24 * 60 * 60}`;
+      onSignedIn?.();
 
       console.log("Sign in successful");
 
-      // Redirect to the home page after successful sign-in
-      return { ok: true, redirectUrl: "/courses" };
+      return { ok: true, redirectUrl: getPostSignInRedirectPath(token) };
     } catch (error: any) {
       console.error("Sign in error:", error);
       return { ok: false, error: error.message };
@@ -83,14 +90,16 @@ function isLoggedIn() {
 
 export default function SignIn() {
   const router = useRouter();
+  const { restoreCourseForCurrentUser } = useCourse();
   const [signInResponse, setSignInResponse] =
     React.useState<LocalAuthResponse | null>(null);
 
   React.useEffect(() => {
-    if (isLoggedIn() && typeof window !== "undefined") {
-      router.push("/courses"); // Redirect to course selection if already logged in
+    if (isLoggedIn()) {
+      restoreCourseForCurrentUser();
+      router.push(getPostSignInRedirectPath(getCookie("token")));
     }
-  }, [router]);
+  }, [restoreCourseForCurrentUser, router]);
 
   React.useEffect(() => {
     if (signInResponse?.ok && signInResponse.redirectUrl) {
@@ -102,7 +111,12 @@ export default function SignIn() {
     <SignInPage
       providers={providerMap}
       signIn={async (provider, formData, callbackUrl) => {
-        const response = await JWTSignIn(provider, formData, callbackUrl);
+        const response = await JWTSignIn(
+          provider,
+          formData,
+          callbackUrl,
+          restoreCourseForCurrentUser
+        );
         setSignInResponse(response); // Update state with the sign-in response
         return response;
       }}
