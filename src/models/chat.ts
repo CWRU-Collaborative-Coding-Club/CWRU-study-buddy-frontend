@@ -32,15 +32,8 @@ export interface ChatListResponse {
 }
 
 export interface ChatDetailsResponse {
-  chat: {
-    agent_id: string;
-    user_id: string;
-    status: string;
-    startedAt: string;
-    closedAt?: string;
-    current_version: number;
-    chat: ChatVersion[];
-  };
+  chat_id: string;
+  messages: Message[];
 }
 
 export interface ChatStatusUpdate {

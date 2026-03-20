@@ -48,6 +48,9 @@ const MOCK_COURSES = [
   { id: "ART101", name: "Introduction to Art History", professor: "Prof. Hans Belting", enrolled: 134, modules: 7, department: "Arts", status: "archived" },
 ];
 
+type Course = (typeof MOCK_COURSES)[number];
+type CourseFilter = "active" | "draft" | "archived";
+
 const DEPARTMENTS = ["Computer Science", "Mathematics", "Physics", "English", "Biology", "Economics", "History", "Arts"];
 
 const EMPTY_FORM = {
@@ -62,12 +65,16 @@ const EMPTY_FORM = {
 export default function CoursesPage() {
   const theme = useTheme();
 
-  const [allCourses, setAllCourses] = useState({ active: MOCK_COURSES.filter(c => c.status === "active"), draft: MOCK_COURSES.filter(c => c.status === "draft"), archived: MOCK_COURSES.filter(c => c.status === "archived") });
-  const [rows, setRows] = useState([]);
-  const [courseFilter, setCourseFilter] = useState("active");
+  const [allCourses, setAllCourses] = useState<Record<CourseFilter, Course[]>>({
+    active: MOCK_COURSES.filter((c) => c.status === "active"),
+    draft: MOCK_COURSES.filter((c) => c.status === "draft"),
+    archived: MOCK_COURSES.filter((c) => c.status === "archived"),
+  });
+  const [rows, setRows] = useState<Course[]>([]);
+  const [courseFilter, setCourseFilter] = useState<CourseFilter>("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   // Add dialog
@@ -76,10 +83,10 @@ export default function CoursesPage() {
 
   // Edit dialog
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState<Course | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
 
-  const searchTimeout = useRef(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -91,7 +98,8 @@ export default function CoursesPage() {
   }, []);
 
   // ── Filtering / Search ───────────────────────────────────────────────────
-  const applyFilter = useCallback((filter, query) => {
+  const applyFilter = useCallback(
+    (filter: "active" | "draft" | "archived", query: string) => {
     setLoading(true);
     setTimeout(() => {
       if (!isMountedRef.current) return;
@@ -109,11 +117,13 @@ export default function CoursesPage() {
       setRows(filtered);
       setLoading(false);
     }, 150);
-  }, [allCourses]);
+    },
+    [allCourses]
+  );
 
   useEffect(() => {
-    applyFilter(courseFilter, searchQuery);
-  }, [courseFilter, allCourses]);
+    applyFilter(courseFilter as "active" | "draft" | "archived", searchQuery);
+  }, [applyFilter, courseFilter, searchQuery]);
 
   // ── Add ──────────────────────────────────────────────────────────────────
   const handleOpenAdd = () => {
@@ -135,7 +145,7 @@ export default function CoursesPage() {
   };
 
   // ── Edit ─────────────────────────────────────────────────────────────────
-  const handleOpenEdit = (row) => {
+  const handleOpenEdit = (row: Course) => {
     setEditTarget(row);
     setEditForm({ name: row.name, professor: row.professor, enrolled: row.enrolled, modules: row.modules, department: row.department });
     setError(null);
@@ -143,28 +153,30 @@ export default function CoursesPage() {
   };
 
   const handleSaveEdit = () => {
+    if (!editTarget) return;
     if (!editForm.name.trim() || !editForm.professor.trim()) {
       setError("Course name and professor are required.");
       return;
     }
-    const update = (list) => list.map((c) => c.id === editTarget.id ? { ...c, ...editForm } : c);
+    const update = (list: Course[]) =>
+      list.map((c) => (c.id === editTarget.id ? { ...c, ...editForm } : c));
     setAllCourses((prev) => ({ active: update(prev.active), draft: update(prev.draft), archived: update(prev.archived) }));
     setEditDialogOpen(false);
     setError(null);
   };
 
   // ── Delete ───────────────────────────────────────────────────────────────
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     const course = rows.find((r) => r.id === id);
     if (!course) return;
     const msg = course.status === "draft" ? `Remove draft "${course.name}"?` : `Delete "${course.name}"? This cannot be undone.`;
     if (!window.confirm(msg)) return;
-    const remove = (list) => list.filter((c) => c.id !== id);
+    const remove = (list: Course[]) => list.filter((c) => c.id !== id);
     setAllCourses((prev) => ({ active: remove(prev.active), draft: remove(prev.draft), archived: remove(prev.archived) }));
   };
 
   // ── Column defs ──────────────────────────────────────────────────────────
-  const enrollmentColor = (n) => {
+  const enrollmentColor = (n: number) => {
     if (n === 0) return theme.palette.text.disabled;
     if (n < 100) return theme.palette.warning.main;
     if (n < 200) return theme.palette.success.main;
@@ -189,7 +201,7 @@ export default function CoursesPage() {
       headerName: "Course Name",
       flex: 1,
       minWidth: 220,
-      renderCell: (params) => (
+      renderCell: (params: any) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <MenuBookIcon sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
           <Typography variant="body2" sx={{ fontWeight: 500 }}>{params.value}</Typography>
@@ -200,7 +212,7 @@ export default function CoursesPage() {
       field: "professor",
       headerName: "Professor",
       width: 200,
-      renderCell: (params) => (
+      renderCell: (params: any) => (
         <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>{params.value}</Typography>
       ),
     },
@@ -208,11 +220,12 @@ export default function CoursesPage() {
       field: "department",
       headerName: "Department",
       width: 160,
-      renderCell: (params) => {
-        const color = deptColors[params.value] || theme.palette.primary.main;
+      renderCell: (params: any) => {
+        const dept = String(params.value) as keyof typeof deptColors;
+        const color = deptColors[dept] || theme.palette.primary.main;
         return (
           <Chip
-            label={params.value}
+            label={String(params.value)}
             size="small"
             variant="outlined"
             sx={{
@@ -231,7 +244,7 @@ export default function CoursesPage() {
       field: "enrolled",
       headerName: "Students Enrolled",
       width: 160,
-      renderCell: (params) => {
+      renderCell: (params: any) => {
         const n = params.value;
         const color = enrollmentColor(n);
         return (
@@ -246,7 +259,7 @@ export default function CoursesPage() {
       field: "modules",
       headerName: "Modules",
       width: 110,
-      renderCell: (params) => (
+      renderCell: (params: any) => (
         <Chip
           label={`${params.value} modules`}
           size="small"
@@ -264,7 +277,7 @@ export default function CoursesPage() {
       field: "actions",
       headerName: "Actions",
       width: 120,
-      renderCell: (params) => {
+      renderCell: (params: any) => {
         const isArchived = params.row.status === "archived";
         return isArchived ? (
           <Typography variant="caption" color="text.disabled">Archived</Typography>
@@ -287,7 +300,13 @@ export default function CoursesPage() {
   ];
 
   // ── Shared form fields ────────────────────────────────────────────────────
-  const CourseFormFields = ({ data, onChange }) => (
+  const CourseFormFields = ({
+    data,
+    onChange,
+  }: {
+    data: typeof EMPTY_FORM;
+    onChange: (field: keyof typeof EMPTY_FORM, value: any) => void;
+  }) => (
     <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 2 }}>
       <TextField label="Course Name" value={data.name} onChange={(e) => onChange("name", e.target.value)} fullWidth required />
       <TextField label="Professor" value={data.professor} onChange={(e) => onChange("professor", e.target.value)} fullWidth required />

@@ -23,11 +23,14 @@ export async function listChats(
 
     const response = await client.get(url);
     
+    const totalFromRange = response.headers["content-range"]?.split("/")[1];
+    const total = totalFromRange ? parseInt(totalFromRange, 10) : response.data.length;
+
     return {
-      chats: response.data,
-      total: response.headers['content-range']?.split('/')[1] || response.data.length,
-      page: parseInt(page),
-      page_size: parseInt(page_size),
+      data: response.data,
+      total,
+      page: parseInt(page, 10),
+      limit: parseInt(page_size, 10),
     };
   } catch (error) {
     console.error("Error fetching chats:", error);
