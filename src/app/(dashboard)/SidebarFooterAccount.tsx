@@ -4,6 +4,8 @@ import Stack from "@mui/material/Stack";
 import MenuList from "@mui/material/MenuList";
 import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { useRouter } from "next/navigation";
 import Divider from "@mui/material/Divider";
 import {
   Account,
@@ -49,6 +51,7 @@ function AccountSidebarPreview(props: AccountPreviewProps & { mini: boolean }) {
 }
 
 function SidebarFooterAccountPopover({ mini }: { mini: boolean }) {
+  const router = useRouter();
   return (
     <Stack direction="column">
       {mini ? <CustomAccountPreview variant="expanded" /> : null}
@@ -62,6 +65,16 @@ function SidebarFooterAccountPopover({ mini }: { mini: boolean }) {
           disableElevation
         >
           Add account
+        </Button>
+        <Button
+          variant="text"
+          sx={{ textTransform: "capitalize", display: "flex", mx: "auto", mt: 1 }}
+          size="small"
+          fullWidth
+          startIcon={<SettingsIcon />}
+          onClick={() => router.push("/profile-settings")}
+        >
+          Profile settings
         </Button>
       </MenuList>
       <Divider />

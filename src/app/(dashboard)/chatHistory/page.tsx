@@ -1,7 +1,12 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import dynamic from "next/dynamic";
+import type { GridColDef } from "@mui/x-data-grid";
+const DataGrid = dynamic(
+  () => import("@mui/x-data-grid").then((mod) => mod.DataGrid),
+  { ssr: false }
+);
 import {
   Box,
   Button,
@@ -26,9 +31,7 @@ import { useTheme } from "@mui/material/styles";
 import { alpha } from "@mui/material/styles";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
-import { listChats, getChatDetail, updateChatStatus } from "@/services/chat";
 import { Chat, Message, ChatVersion } from "@/models/chat";
-import { getModuleTitle } from "@/services/module";
 
 export default function ChatHistoryPage() {
   const theme = useTheme();
@@ -62,6 +65,7 @@ export default function ChatHistoryPage() {
     setLoading(true);
     try {
       // Always fetch from server with status filter only, no text search on backend
+      const { listChats } = await import("@/services/chat");
       const response = await listChats(
         statusFilter !== "all" ? statusFilter : undefined,
         page.toString(),
@@ -107,6 +111,7 @@ export default function ChatHistoryPage() {
     const results = await Promise.all(
       agentIds.map(async (agentId) => {
         try {
+          const { getModuleTitle } = await import("@/services/module");
           const title = await getModuleTitle(agentId);
           return { agentId, title };
         } catch (error) {
@@ -198,6 +203,7 @@ export default function ChatHistoryPage() {
   // Close chat action
   const handleCloseChat = async (chat: Chat) => {
     try {
+      const { updateChatStatus } = await import("@/services/chat");
       await updateChatStatus({
         chat_id: chat.chat_id,
         status: "closed",
@@ -212,6 +218,7 @@ export default function ChatHistoryPage() {
   // Reopen chat action
   const handleReopenChat = async (chat: Chat) => {
     try {
+      const { updateChatStatus } = await import("@/services/chat");
       await updateChatStatus({
         chat_id: chat.chat_id,
         status: "in_progress",
