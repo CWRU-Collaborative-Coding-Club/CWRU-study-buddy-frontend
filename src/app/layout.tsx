@@ -104,7 +104,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       session={SESSION}
       branding={{
         logo: <img src="/study-buddy-logo.png" alt="Logo" width={40} />,
-        title: "StudyBuddy",
       }}
     >
       {children}

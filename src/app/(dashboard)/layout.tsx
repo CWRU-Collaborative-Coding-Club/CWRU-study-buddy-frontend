@@ -3,6 +3,7 @@ import * as React from "react";
 import { DashboardLayout } from "@toolpad/core/DashboardLayout";
 import { PageContainer } from "@toolpad/core/PageContainer";
 import Copyright from "../components/Copyright";
+import Link from "next/link";
 import SidebarFooterAccount, {
   ToolbarAccountOverride,
 } from "./SidebarFooterAccount";
@@ -151,10 +152,21 @@ function ToolbarCourseIndicator() {
   );
 }
 
+function AppLogoOnly() {
+  return (
+    <Link href="/" style={{ textDecoration: "none" }}>
+      <Box sx={{ position: "relative", height: 40 }}>
+        <img src="/study-buddy-logo.png" alt="Logo" style={{ height: 40 }} />
+      </Box>
+    </Link>
+  );
+}
+
 export default function Layout(props: { children: React.ReactNode }) {
   return (
     <DashboardLayout
       slots={{
+        appTitle: AppLogoOnly,
         toolbarActions: ToolbarCourseIndicator,
         toolbarAccount: ToolbarAccountOverride,
         sidebarFooter: SidebarFooterAccount,
