@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
+    "dev:backend": "cd ../backend && .venv/bin/python3 -m uvicorn main:app --reload --host 127.0.0.1 --port 8000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

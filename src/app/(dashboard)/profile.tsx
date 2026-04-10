@@ -11,6 +11,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip'; // Import Chip
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'; // Example icon for placeholder
+import { isLocalBackend } from "@/lib/http/apiConfig";
+import { isAxiosNetworkError } from "@/utils/httpErrors";
 import { getMe } from '../../services/user'; // Adjust path as needed
 import { UserProfile } from '../../models/user'; // Adjust path as needed
 
@@ -53,7 +55,13 @@ export default function ProfilePage() {
         setUserProfile(profileData);
       } catch (err) {
         console.error("Failed to fetch user profile:", err);
-        setError("Failed to load profile information.");
+        if (isAxiosNetworkError(err) && isLocalBackend()) {
+          setError(
+            "Profile unavailable — the local API is not reachable. Start the backend (see the dashboard alert), or from the backend folder run npm run dev with your venv activated."
+          );
+        } else {
+          setError("Failed to load profile information.");
+        }
       } finally {
         setLoading(false);
       }

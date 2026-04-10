@@ -1,41 +1,44 @@
 import { getCookie } from "@/utils/cookies";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
-import https from "https";
+import { getClientBaseURL, isLocalBackend } from "./apiConfig";
 
-// Supabase REST API configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Config
-export const localBackend =
-  process.env.NEXT_PUBLIC_LOCAL_BACKEND?.toUpperCase() === "TRUE";
+export const localBackend = isLocalBackend();
 
-// HTTP Agent config
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: process.env.NODE_ENV !== "development",
-});
-
-// Create axios instance for Supabase REST API
 const client = axios.create({
-  baseURL: `${supabaseUrl}/rest/v1`,
-  timeout: 10000,
-  httpsAgent,
-  headers: {
-    "apikey": supabaseAnonKey,
-    "Content-Type": "application/json",
-  },
+  baseURL: getClientBaseURL(),
+  timeout: 120000,
+  headers: localBackend
+    ? {
+        "Content-Type": "application/json",
+      }
+    : {
+        apikey: supabaseAnonKey ?? "",
+        "Content-Type": "application/json",
+      },
 });
 
-// Request interceptor - add JWT token if available
+function isPublicUserRoute(url: string | undefined): boolean {
+  if (!url) return false;
+  return (
+    url.includes("/user/signin") ||
+    url.includes("/user/signup")
+  );
+}
+
 client.interceptors.request.use(
   async (config: AxiosRequestConfig) => {
     try {
-      // Get JWT token from cookies
-      const token = getCookie("token");
+      if (config.data instanceof FormData && config.headers) {
+        delete (config.headers as Record<string, unknown>)["Content-Type"];
+      }
 
-      // If token exists, add it to the request headers
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const path = typeof config.url === "string" ? config.url : "";
+      const token = getCookie("token");
+      if (token && config.headers && !isPublicUserRoute(path)) {
+        (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
       }
       return config as any;
     } catch (error) {
@@ -49,7 +52,6 @@ client.interceptors.request.use(
   }
 );
 
-// Response interceptor
 client.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
@@ -58,12 +60,32 @@ client.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
 
-      if (status === 401) {
-        // Unauthorized - redirect to login
+      if (status === 401 && typeof window !== "undefined") {
         window.location.href = "/auth/signin";
       } else if (status === 403) {
-        // Forbidden - handle access denied
-        console.error("Access denied:", error.response.data);
+        const reqUrl = String(error.config?.url ?? "");
+        const isPublicAuth =
+          reqUrl.includes("/user/signin") || reqUrl.includes("/user/signup");
+        if (!isPublicAuth && typeof window !== "undefined") {
+          const raw = error.response?.data;
+          let msg: string;
+          if (typeof raw === "string") {
+            msg = raw;
+          } else if (raw && typeof raw === "object" && "detail" in raw) {
+            const d = (raw as { detail: unknown }).detail;
+            msg =
+              typeof d === "string"
+                ? d
+                : Array.isArray(d)
+                  ? JSON.stringify(d)
+                  : JSON.stringify(raw);
+          } else {
+            msg =
+              error.response?.statusText ||
+              `HTTP ${status}`;
+          }
+          console.error("Access denied:", msg);
+        }
       }
     }
 

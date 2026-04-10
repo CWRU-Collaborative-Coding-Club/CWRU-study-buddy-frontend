@@ -56,26 +56,22 @@ export default function SignUp() {
       alert("User registered successfully!");
       router.push("/courses"); // Redirect to course selection
     } catch (error: any) {
-      // Handle structured validation errors
-      if (error.response?.data?.detail && Array.isArray(error.response.data.detail)) {
-        // Format validation errors
-        const errorMessages = error.response.data.detail.map((err: any) => {
-          // Extract field name from location path (e.g., ["body", "password"] -> "password")
-          const field = err.loc && err.loc.length > 1 ? err.loc[1] : 'unknown field';
-          
-          // Create a readable field name with first letter capitalized
-          const readableField = field.charAt(0).toUpperCase() + field.slice(1);
-          
-          // Just return the error message for password fields without showing the value
-          return field === 'password' ? 
-            `Password must contain at least one special character` : 
-            `${readableField}: ${err.msg}`;
-        }).join('\n');
-        
+      const detail = error.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        const errorMessages = detail
+          .map((err: { loc?: string[]; msg?: string }) => {
+            const field =
+              err.loc && err.loc.length > 1 ? err.loc[1] : "unknown field";
+            const readableField =
+              field.charAt(0).toUpperCase() + field.slice(1);
+            return `${readableField}: ${err.msg ?? "invalid"}`;
+          })
+          .join("\n");
         setError(errorMessages);
+      } else if (typeof detail === "string") {
+        setError(detail);
       } else {
-        // Handle other types of errors
-        setError(error.response?.data?.detail || error.message);
+        setError(error.message || "Sign up failed");
       }
     } finally {
       setLoading(false);

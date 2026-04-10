@@ -8,8 +8,11 @@ import Typography from "@mui/material/Typography";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CircularProgress from '@mui/material/CircularProgress'; // Import loading indicator
+import Alert from "@mui/material/Alert";
 import ProfilePage from "./profile";
+import { isLocalBackend } from "@/lib/http/apiConfig";
 import { analyticsService } from "@/services/analyticsService";
+import { isAxiosNetworkError, localBackendUnreachableMessage } from "@/utils/httpErrors";
 import UserAnalyticsDisplay from "../components/UserAnalyticsDisplay";
 import OrganizationAnalyticsDisplay from "../components/OrganizationAnalyticsDisplay";
 import OrganizationTopCompletedModules from "../components/OrganizationTopCompletedModules";
@@ -56,6 +59,7 @@ export default function DashboardContent() {
   const [analytics, setAnalytics] = React.useState<AnalyticsData>({});
   const [isLoading, setIsLoading] = React.useState(true); // Track loading state
   const [isClient, setIsClient] = React.useState(false); // Track if running on client
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setIsClient(true); // Component has mounted on the client
@@ -63,6 +67,7 @@ export default function DashboardContent() {
 
     async function getAnalytics() {
       setIsLoading(true); // Start loading
+      setFetchError(null);
       try {
         const analyticsData = await analyticsService();
         if (isMounted) {
@@ -71,7 +76,9 @@ export default function DashboardContent() {
         }
       } catch (error) {
         console.error("Error fetching analytics data:", error);
-        // Optionally set an error state here
+        if (isMounted && isAxiosNetworkError(error) && isLocalBackend()) {
+          setFetchError(localBackendUnreachableMessage());
+        }
       } finally {
          if (isMounted) {
            setIsLoading(false); // Finish loading
@@ -127,6 +134,12 @@ export default function DashboardContent() {
         >
           <Box sx={{ width: "100%", maxWidth: { sm: "100%", md: "1700px" } }}>
             <ProfilePage />
+
+            {fetchError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {fetchError}
+              </Alert>
+            )}
 
             <Grid container spacing={3} sx={{ my: 2 }}>
               {/* Left Column */}

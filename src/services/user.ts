@@ -1,56 +1,61 @@
 import { supabase } from "../lib/http/firebase";
+import { isLocalBackend } from "../lib/http/apiConfig";
 import client from "../lib/http/request";
 import {
-    AddUserRequest,
-    AuthResponse,
-    DeleteUserRequest,
-    SignInRequest,
-    SignUpRequest,
-    UpdateAccessLevelRequest,
-    User,
-    UserProfile
+  AddUserRequest,
+  AuthResponse,
+  DeleteUserRequest,
+  SignInRequest,
+  SignUpRequest,
+  UpdateAccessLevelRequest,
+  User,
+  UserProfile,
 } from "../models/user";
 
-// Supabase REST API paths
+// Supabase REST API paths (PostgREST)
 const api = {
   users: "/users",
   allowedUsers: "/allowed_users",
 };
 
-// Authentication using Supabase Auth
+// Authentication
 export async function signUp(data: SignUpRequest): Promise<AuthResponse> {
+  if (isLocalBackend()) {
+    const { data: res } = await client.post<AuthResponse>("/user/signup", {
+      email: data.email,
+      password: data.password,
+      first_name: data.first_name,
+      last_name: data.last_name,
+    });
+    return res;
+  }
+
   try {
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
         data: {
-          display_name: data.email.split("@")[0], // Or use name if provided
+          display_name: data.email.split("@")[0],
         },
       },
     });
 
     if (error) throw error;
 
-    // Get JWT token from session
     const token = authData.session?.access_token || "";
-    
-    // Create user profile in users table
+
     if (authData.user?.id) {
       await client.post(api.users, {
         id: authData.user.id,
         email: data.email,
-        access_level: 1, // Default access level
+        access_level: 1,
       });
     }
 
     return {
+      message: "Sign up successful",
       token,
-      user: {
-        user_id: authData.user?.id || "",
-        email: data.email,
-        access_level: 1,
-      },
     };
   } catch (error) {
     console.error("Sign up error:", error);
@@ -59,6 +64,14 @@ export async function signUp(data: SignUpRequest): Promise<AuthResponse> {
 }
 
 export async function signIn(data: SignInRequest): Promise<AuthResponse> {
+  if (isLocalBackend()) {
+    const { data: res } = await client.post<AuthResponse>("/user/signin", {
+      email: data.email,
+      password: data.password,
+    });
+    return res;
+  }
+
   try {
     const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: data.email,
@@ -69,22 +82,11 @@ export async function signIn(data: SignInRequest): Promise<AuthResponse> {
 
     const token = authData.session?.access_token || "";
 
-    // Fetch user profile from users table
-    const { data: userData, error: userError } = await client.get(
-      `${api.users}?id=eq.${authData.user?.id}`
-    );
-
-    if (userError) throw userError;
-
-    const user = userData?.[0] || { user_id: authData.user?.id };
+    await client.get(`${api.users}?id=eq.${authData.user?.id}`);
 
     return {
+      message: "Sign in successful",
       token,
-      user: {
-        user_id: user.user_id,
-        email: data.email,
-        access_level: user.access_level || 1,
-      },
     };
   } catch (error) {
     console.error("Sign in error:", error);
@@ -93,51 +95,93 @@ export async function signIn(data: SignInRequest): Promise<AuthResponse> {
 }
 
 export function addUser(data: AddUserRequest): Promise<{ message: string }> {
+  if (isLocalBackend()) {
+    return client
+      .post<{ message: string }>("/user/allowed-users", {
+        emails: data.emails,
+        access_level: data.access_level ?? 1,
+      })
+      .then((response) => response.data);
+  }
   return client
     .post(api.allowedUsers, {
-      email: data.email,
+      emails: data.emails,
       access_level: data.access_level || 1,
     })
     .then((response: { data: { message: string } }) => response.data);
 }
 
 export function deleteUsers(data: DeleteUserRequest): Promise<{ message: string }> {
+  if (isLocalBackend()) {
+    return client
+      .delete<{ message: string }>(`/user/${encodeURIComponent(data.user_id)}`)
+      .then((response) => response.data);
+  }
   return client
     .delete(`${api.users}?id=eq.${data.user_id}`)
     .then((response: { data: { message: string } }) => response.data);
 }
 
-export function updateAccessLevel(data: UpdateAccessLevelRequest): Promise<{ message: string }> {
+export function updateAccessLevel(
+  data: UpdateAccessLevelRequest
+): Promise<{ message: string }> {
+  if (isLocalBackend()) {
+    return client
+      .post<{ message: string }>("/user/set-access-level", {
+        email: data.email,
+        new_access_level: data.new_access_level,
+      })
+      .then((response) => response.data);
+  }
   return client
-    .patch(
-      `${api.users}?id=eq.${data.user_id}`,
-      { access_level: data.access_level }
-    )
+    .patch(`${api.users}?email=eq.${encodeURIComponent(data.email)}`, {
+      access_level: data.new_access_level,
+    })
     .then((response: { data: { message: string } }) => response.data);
 }
 
 export function listUsers(
-  filterType: string = "all", 
-  search: string = "", 
-  page: number = 1, 
+  filterType: string = "all",
+  search: string = "",
+  page: number = 1,
   pageSize: number = 25
 ): Promise<User[]> {
+  if (isLocalBackend()) {
+    return client
+      .get<Record<string, unknown>[]>("/user/list", {
+        params: {
+          filter_type: filterType,
+          search,
+          page,
+          page_size: pageSize,
+        },
+      })
+      .then((response) =>
+        (response.data || []).map((row) => ({
+          user_id: String(row.user_id ?? ""),
+          first_name: String(row.first_name ?? ""),
+          last_name: String(row.last_name ?? ""),
+          email: String(row.email ?? ""),
+          access_level: Number(row.access_level ?? 0),
+          workspace_id: Number(row.workspace_id ?? 0),
+          isDeleted: row.isDeleted != null ? (row.isDeleted as Date | null) : null,
+        }))
+      );
+  }
+
   const offset = (page - 1) * pageSize;
-  
   let url = `${api.users}?order=created_at.desc&limit=${pageSize}&offset=${offset}`;
-  
+
   if (search) {
     url += `&or=(email.ilike.%${search}%,display_name.ilike.%${search}%)`;
   }
 
-  return client
-    .get(url)
-    .then((response: { data: User[] }) => response.data);
+  return client.get(url).then((response: { data: User[] }) => response.data);
 }
 
 export function listAllowedUsers(
-  search: string = "", 
-  page: number = 1, 
+  search: string = "",
+  page: number = 1,
   pageSize: number = 25
 ): Promise<{
   allowed_users: Array<{
@@ -150,43 +194,50 @@ export function listAllowedUsers(
   page_size: number;
   total_count: number;
 }> {
+  if (isLocalBackend()) {
+    return client
+      .get("/user/allowed-users", {
+        params: { search, page, page_size: pageSize },
+      })
+      .then((response) => ({
+        allowed_users: response.data.allowed_users || [],
+        page: response.data.page ?? page,
+        page_size: response.data.page_size ?? pageSize,
+        total_count: response.data.total_count ?? 0,
+      }));
+  }
+
   const offset = (page - 1) * pageSize;
-  
   let url = `${api.allowedUsers}?order=created_at.desc&limit=${pageSize}&offset=${offset}`;
-  
+
   if (search) {
     url += `&or=(email.ilike.%${search}%)`;
   }
 
-  return client
-    .get(url)
-    .then((response: { data: any[] }) => ({
-      allowed_users: response.data || [],
-      page,
-      page_size: pageSize,
-      total_count: response.data?.length || 0,
-    }));
+  return client.get(url).then((response: { data: any[] }) => ({
+    allowed_users: response.data || [],
+    page,
+    page_size: pageSize,
+    total_count: response.data?.length || 0,
+  }));
 }
 
 export async function listAllPendingUsers(search: string = ""): Promise<any[]> {
-  // Start with page 1
   let page = 1;
-  const pageSize = 25; // Request larger page size
+  const pageSize = 25;
   let allUsers: any[] = [];
   let hasMoreData = true;
-  
-  // Fetch all pages
+
   while (hasMoreData) {
     const response = await listAllowedUsers(search, page, pageSize);
-    
+
     if (response.allowed_users && response.allowed_users.length > 0) {
       allUsers = [...allUsers, ...response.allowed_users];
-      
-      // If we got fewer users than the page size, we're done
+
       if (response.allowed_users.length < pageSize) {
         hasMoreData = false;
       } else {
-        page++; // Move to next page
+        page++;
       }
     } else {
       hasMoreData = false;
@@ -195,7 +246,14 @@ export async function listAllPendingUsers(search: string = ""): Promise<any[]> {
   return allUsers;
 }
 
-export function deleteAllowedUser(email: string): Promise<{message: string}> {
+export function deleteAllowedUser(email: string): Promise<{ message: string }> {
+  if (isLocalBackend()) {
+    return client
+      .delete<{ message: string }>(
+        `/user/allowed-users/${encodeURIComponent(email)}`
+      )
+      .then((r) => r.data);
+  }
   return client
     .delete(`${api.allowedUsers}?email=eq.${encodeURIComponent(email)}`)
     .then(() => ({ message: "User deleted successfully" }));
@@ -205,6 +263,14 @@ export function updateAllowedUserAccessLevel(payload: {
   email: string;
   new_access_level: number;
 }): Promise<{ message: string }> {
+  if (isLocalBackend()) {
+    return client
+      .put<{ message: string }>("/user/allowed-users/access-level", {
+        email: payload.email,
+        new_access_level: payload.new_access_level,
+      })
+      .then((r) => r.data);
+  }
   return client
     .patch(
       `${api.allowedUsers}?email=eq.${encodeURIComponent(payload.email)}`,
@@ -214,19 +280,33 @@ export function updateAllowedUserAccessLevel(payload: {
 }
 
 export async function getMe(): Promise<UserProfile> {
+  if (isLocalBackend()) {
+    const { data } = await client.get<{
+      email: string;
+      first_name: string;
+      last_name: string;
+      access_level: number;
+      user_id: string;
+    }>("/user/me");
+    return {
+      email: data.email,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      access_level: data.access_level,
+      user_id: data.user_id,
+    };
+  }
+
   try {
     const { data: authUser } = await supabase.auth.getUser();
-    
+
     if (!authUser.user?.id) {
       throw new Error("User not authenticated");
     }
 
-    // Fetch user profile from users table
-    const { data: userData, error } = await client.get(
+    const { data: userData } = await client.get(
       `${api.users}?id=eq.${authUser.user.id}`
     );
-
-    if (error) throw error;
 
     const user = userData?.[0];
     if (!user) {
@@ -234,10 +314,11 @@ export async function getMe(): Promise<UserProfile> {
     }
 
     return {
-      user_id: user.id,
+      user_id: user.id ?? user.user_id,
       email: user.email,
       access_level: user.access_level,
-      display_name: user.display_name,
+      first_name: user.first_name ?? user.display_name ?? "",
+      last_name: user.last_name ?? "",
     };
   } catch (error) {
     console.error("Error fetching current user:", error);

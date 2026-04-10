@@ -25,7 +25,7 @@ import { STUDENT_COURSES } from "@/app/data/studentCourses";
 import type { Course } from "../context/CourseContext";
 
 function ToolbarCourseIndicator() {
-  const { selectedCourse, selectCourse } = useCourse();
+  const { selectedCourse, selectCourse, clearCourse } = useCourse();
   const router = useRouter();
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -48,6 +48,7 @@ function ToolbarCourseIndicator() {
   };
 
   const handleGoToCourses = () => {
+    clearCourse();
     handleClose();
     router.push("/courses");
   };

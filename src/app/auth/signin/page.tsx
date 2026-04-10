@@ -6,8 +6,10 @@ import { SignInPage } from "@toolpad/core/SignInPage";
 import { providerMap } from "@/config/constants";
 import { AuthProvider } from "@toolpad/core";
 import { useRouter } from "next/navigation";
+import { isLocalBackend } from "@/lib/http/apiConfig";
 import { signIn } from "@/services/user";
 import { getCookie } from "@/utils/cookies";
+import { isAxiosNetworkError, localBackendUnreachableMessage } from "@/utils/httpErrors";
 import { hasPersistedCourseForToken } from "@/utils/courseSelection";
 import { useCourse } from "@/app/context/CourseContext";
 
@@ -73,9 +75,25 @@ async function JWTSignIn(
       console.log("Sign in successful");
 
       return { ok: true, redirectUrl: getPostSignInRedirectPath(token) };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Sign in error:", error);
-      return { ok: false, error: error.message };
+      if (isAxiosNetworkError(error) && isLocalBackend()) {
+        return { ok: false, error: localBackendUnreachableMessage() };
+      }
+      const msg =
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        (error as { response?: { data?: { detail?: string } } }).response?.data
+          ?.detail;
+      if (typeof msg === "string") {
+        return { ok: false, error: msg };
+      }
+      return {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Sign in failed. Try again.",
+      };
     }
   } else if (provider.id === "google") {
     // Handle Google sign-in
