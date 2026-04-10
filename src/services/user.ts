@@ -1,4 +1,4 @@
-import { supabase } from "../lib/http/firebase";
+import { supabase } from "../lib/http/supabase";
 import { isLocalBackend } from "../lib/http/apiConfig";
 import client from "../lib/http/request";
 import {
